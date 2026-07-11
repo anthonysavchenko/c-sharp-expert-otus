@@ -31,4 +31,13 @@ public readonly ref struct Command
     _key = key;
     _value = value;
   }
+
+  public override string ToString()
+  {
+    var stringBuilder = new StringBuilder($"Command Type: {CommandType}, Key: {Key}");
+
+    if (CommandType == CommandParser.SetCommandType) stringBuilder.Append($", Value: {CommandParser.GetString(Value)}");
+
+    return stringBuilder.ToString();
+  }
 }

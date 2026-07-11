@@ -1,6 +1,7 @@
 using System.Buffers;
 using System.Net;
 using System.Net.Sockets;
+using InMemoryCache.Log;
 using InMemoryCache.Parser;
 using InMemoryCache.Store;
 
@@ -126,7 +127,7 @@ public class TcpServer(IPAddress ipAddress, int port, int clientMessageMinBytes,
     var command = CommandParser.ParseBytes(message.Span);
     var response = ApplyCommandToStore(command);
 
-    LogClientMessage(clientEndPoint, command, response);
+    Logger.LogClientMessage(clientEndPoint, command, response);
 
     return response;
   }
@@ -157,17 +158,6 @@ public class TcpServer(IPAddress ipAddress, int port, int clientMessageMinBytes,
       default:
         return UnknownCommandResponse;
     }
-  }
-
-  private static void LogClientMessage(EndPoint? clientEndPoint, Command command, byte[] response)
-  {
-    var log = $"Client {clientEndPoint}. Received command type: {command.CommandType}, key: {command.Key}";
-
-    if (command.CommandType == CommandParser.SetCommandType) log += $", value: {CommandParser.GetString(command.Value)}";
-
-    log += $". Response sent: {CommandParser.GetString(response).Replace(Environment.NewLine, "")}.";
-
-    Console.WriteLine(log);
   }
 
   protected virtual void Dispose(bool disposing)
