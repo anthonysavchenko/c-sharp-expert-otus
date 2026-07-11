@@ -1,8 +1,8 @@
 using System.Text;
-using Store.Parser;
-using Store.Store;
+using InMemoryCache.Parser;
+using InMemoryCache.Store;
 
-namespace Store.Tests;
+namespace InMemoryCache.Tests;
 
 public class SimpleStoreTests
 {

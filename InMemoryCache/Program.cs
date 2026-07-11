@@ -1,6 +1,6 @@
 ﻿using System.Net;
-using Store;
-using Store.Store;
+using InMemoryCache.Server;
+using InMemoryCache.Store;
 
 var ipAddress = IPAddress.Parse("127.0.0.1");
 var port = 8080;

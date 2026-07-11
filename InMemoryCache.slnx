@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="InMemoryCache.Tests/InMemoryCache.Tests.csproj" />
+  <Project Path="InMemoryCache/InMemoryCache.csproj" />
+</Solution>

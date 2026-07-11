@@ -4,7 +4,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <OutputType>Exe</OutputType>
-    <RootNamespace>Store.Tests</RootNamespace>
+    <RootNamespace>InMemoryCache.Tests</RootNamespace>
     <TargetFramework>net10.0</TargetFramework>
     <TestingPlatformDotnetTestSupport>true</TestingPlatformDotnetTestSupport>
   </PropertyGroup>
@@ -22,7 +22,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Store\Store.csproj" />
+    <ProjectReference Include="..\InMemoryCache\InMemoryCache.csproj" />
   </ItemGroup>
 
 </Project>

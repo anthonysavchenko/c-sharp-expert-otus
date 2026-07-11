@@ -1,4 +1,4 @@
-namespace Store.Parser;
+namespace InMemoryCache.Parser;
 
 public readonly ref struct SlicedFirstToken
 {

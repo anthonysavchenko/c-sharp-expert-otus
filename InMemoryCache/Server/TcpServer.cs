@@ -1,14 +1,13 @@
 using System.Buffers;
 using System.Net;
 using System.Net.Sockets;
-using Store.Parser;
-using Store.Store;
+using InMemoryCache.Parser;
+using InMemoryCache.Store;
 
-namespace Store;
+namespace InMemoryCache.Server;
 
 // TODO: перенести serverSocket в поле класса и вынести ServerSocketInit
 // TODO: сделать возможность выключать запись в консоль
-// TODO: вынести в отдельную папку Server, переименовать Store, чтобы не было две одинаковые папки
 // TODO: использовать внутри TcpServer хранилище через интерфейс IStore
 // TODO: сократить количество параметров конструктора TcpServer
 // TODO: вынести Encoding.UTF8.GetString в Utils

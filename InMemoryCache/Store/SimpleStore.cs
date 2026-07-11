@@ -1,4 +1,4 @@
-namespace Store.Store;
+namespace InMemoryCache.Store;
 
 public class SimpleStore : IDisposable
 {

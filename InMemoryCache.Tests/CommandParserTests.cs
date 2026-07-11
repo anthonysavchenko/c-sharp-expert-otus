@@ -1,6 +1,6 @@
-using Store.Parser;
+using InMemoryCache.Parser;
 
-namespace Store.Tests;
+namespace InMemoryCache.Tests;
 
 public class CommandParserTests
 {

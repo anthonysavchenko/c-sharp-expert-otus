@@ -1,9 +1,10 @@
 using System.Net;
 using System.Net.Sockets;
-using Store.Parser;
-using Store.Store;
+using InMemoryCache.Parser;
+using InMemoryCache.Server;
+using InMemoryCache.Store;
 
-namespace Store.Tests;
+namespace InMemoryCache.Tests;
 
 public class TcpServerTests
 {

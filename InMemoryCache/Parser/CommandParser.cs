@@ -1,6 +1,6 @@
 using System.Text;
 
-namespace Store.Parser;
+namespace InMemoryCache.Parser;
 
 public static class CommandParser
 {
