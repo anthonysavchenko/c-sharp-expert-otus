@@ -1,4 +1,5 @@
 using System.Text;
+using Store.Parser;
 using Store.Store;
 
 namespace Store.Tests;
@@ -10,7 +11,7 @@ public class SimpleStoreTests
   {
     using var store = new SimpleStore();
     var key = (string?)null;
-    var value = GetBytes("data");
+    var value = CommandParser.GetBytes("data");
 
     void Action() => store.Set(key!, value);
 
@@ -22,7 +23,7 @@ public class SimpleStoreTests
   {
     using var store = new SimpleStore();
     var key = string.Empty;
-    var value = GetBytes("data");
+    var value = CommandParser.GetBytes("data");
 
     void Action() => store.Set(key, value);
 
@@ -102,7 +103,7 @@ public class SimpleStoreTests
   {
     using var store = new SimpleStore();
     var key = "user:1";
-    var value = GetBytes("data");
+    var value = CommandParser.GetBytes("data");
 
     store.Set(key, value);
 
@@ -112,7 +113,7 @@ public class SimpleStoreTests
 
     var valueFromStoreAfterDelete = store.Get(key);
 
-    Assert.Equal("data", GetString(valueFromStore));
+    Assert.Equal("data", CommandParser.GetString(valueFromStore));
     Assert.Null(valueFromStoreAfterDelete);
   }
 
@@ -125,7 +126,7 @@ public class SimpleStoreTests
     var copyToKey = "user:2";
     var value = "data";
     var count = 10;
-    var bytes = GetBytes(value);
+    var bytes = CommandParser.GetBytes(value);
 
     store.Set(copyFromKey, bytes);
 
@@ -135,11 +136,11 @@ public class SimpleStoreTests
 
     var valueFromStoreCopyFrom = store.Get(copyFromKey);
 
-    Assert.Equal(value, GetString(valueFromStoreCopyFrom));
+    Assert.Equal(value, CommandParser.GetString(valueFromStoreCopyFrom));
 
     var valueFromStoreCopyTo = store.Get(copyToKey);
 
-    Assert.Equal(value, GetString(valueFromStoreCopyTo));
+    Assert.Equal(value, CommandParser.GetString(valueFromStoreCopyTo));
 
     store.Delete(copyFromKey);
     store.Delete(copyToKey);
@@ -173,8 +174,4 @@ public class SimpleStoreTests
 
     store.Set(copyToKey, value!);
   }
-
-  private static byte[] GetBytes(string requestString) => Encoding.Unicode.GetBytes(requestString);
-
-  private static string GetString(ReadOnlySpan<byte> bytes) => Encoding.Unicode.GetString(bytes);
 }
