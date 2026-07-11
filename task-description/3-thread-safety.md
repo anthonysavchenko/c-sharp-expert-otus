@@ -34,8 +34,8 @@
 
 ## Критерии оценки
 
-Метод Get использует ReaderWriterLockSlim в режиме чтения (EnterReadLock/ExitReadLock) - 2 балла
-Методы Set и Delete используют ReaderWriterLockSlim в режиме записи (EnterWriteLock/ExitWriteLock), блокировки корректно освобождаются в блоке finally - 3 балла
-Реализован потокобезопасный сбор статистики с использованием Interlocked.Increment для трех операций - 2 балла
-Класс SimpleStore реализует интерфейс IDisposable и корректно освобождает ресурсы ReaderWriterLockSlim - 1 балл
-Написан многопоточный тест, который доказывает корректность работы хранилища и сбора статистики под нагрузкой - 2 балла
+- Метод Get использует ReaderWriterLockSlim в режиме чтения (EnterReadLock/ExitReadLock) - 2 балла
+- Методы Set и Delete используют ReaderWriterLockSlim в режиме записи (EnterWriteLock/ExitWriteLock), блокировки корректно освобождаются в блоке finally - 3 балла
+- Реализован потокобезопасный сбор статистики с использованием Interlocked.Increment для трех операций - 2 балла
+- Класс SimpleStore реализует интерфейс IDisposable и корректно освобождает ресурсы ReaderWriterLockSlim - 1 балл
+- Написан многопоточный тест, который доказывает корректность работы хранилища и сбора статистики под нагрузкой - 2 балла

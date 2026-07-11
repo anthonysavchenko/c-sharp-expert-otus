@@ -6,4 +6,8 @@
 
 ## 2. ✅ [Каркас TCP-сервера и интеграция парсера](task-description/2-tcp-server.md)
 
-## 3. ⏳ [Потокобезопасное хранилище и сбор статистики](task-description/3-thread-safety.md)
+## 3. ✅ [Потокобезопасное хранилище и сбор статистики](task-description/3-thread-safety.md)
+
+## 4. ✅ [Интеграция и первая рабочая версия: "Все вместе"](task-description/4-integration.md)
+
+## 5. ⏳ [Нагрузочное тестирование](task-description/5-load-testing.md)
