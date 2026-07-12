@@ -1,24 +1,26 @@
 using System.Buffers;
 using System.Net;
 using System.Net.Sockets;
-using InMemoryCache.Log;
+using InMemoryCache.Core;
 using InMemoryCache.Parser;
 using InMemoryCache.Store;
 
 namespace InMemoryCache.Server;
 
 // TODO: перенести serverSocket в поле класса и вынести ServerSocketInit
-// TODO: сделать возможность выключать запись в консоль
 // TODO: использовать внутри TcpServer хранилище через интерфейс IStore
 // TODO: сократить количество параметров конструктора TcpServer
 // TODO: вынести Encoding.UTF8.GetString в Utils
-// TODO: выделить ядро
+// TODO: выделить ядро (разделить сервер на 3 класса: сервер, клиент и ядро). В ядро перенести ApplyCommandToStore
+// TODO: создать отдельный класс для response, чтобы его можно было унаследовать от ILogWritable
 
-public class TcpServer(IPAddress ipAddress, int port, int clientMessageMinBytes, SimpleStore store) : IDisposable
+public class TcpServer(IPAddress ipAddress, int port, int clientMessageMinBytes, SimpleStore store, ILogger logger) : IDisposable, ILogWritable
 {
   private readonly IPEndPoint _endPoint = new(ipAddress, port);
 
   private readonly int _clientMessageMinBytes = clientMessageMinBytes;
+
+  private readonly ILogger _logger = logger;
 
   private readonly SimpleStore _store = store;
 
@@ -26,7 +28,7 @@ public class TcpServer(IPAddress ipAddress, int port, int clientMessageMinBytes,
 
   private static readonly byte[] NullResponse = CommandParser.GetBytes($"NULL{Environment.NewLine}");
 
-  private static readonly byte[] UnknownCommandResponse = CommandParser.GetBytes($"ERR Unknown command{Environment.NewLine}");
+  private static readonly byte[] UnknownCommandResponse = CommandParser.GetBytes($"ERROR Unknown command{Environment.NewLine}");
 
   private bool disposed;
 
@@ -39,14 +41,14 @@ public class TcpServer(IPAddress ipAddress, int port, int clientMessageMinBytes,
       serverSocket.Bind(_endPoint);
       serverSocket.Listen();
 
-      Console.WriteLine($"Server {_endPoint}. Started");
-      Console.WriteLine($"Client message min bytes for ArrayPool: {_clientMessageMinBytes}");
+      _logger.WriteServerLog(this, "Started");
+      _logger.WriteServerLog(this, $"Client message min bytes for ArrayPool: {_clientMessageMinBytes}");
 
       await WaitAndProcessClientsAsync(serverSocket, cancellationToken);
     }
     catch (Exception e)
     {
-      Console.WriteLine($"Server {_endPoint}. Exception occured: {e}");
+      _logger.WriteServerLog(this, e);
     }
   }
 
@@ -58,7 +60,7 @@ public class TcpServer(IPAddress ipAddress, int port, int clientMessageMinBytes,
       {
         var clientSocket = await serverSocket.AcceptAsync(cancellationToken);
 
-        Console.WriteLine($"Client {clientSocket.RemoteEndPoint}. Connected");
+        _logger.WriteServerLog(this, $"Client connected [{clientSocket.RemoteEndPoint}]");
 
         _ = Task.Run(() => ProcessClientAsync(clientSocket, cancellationToken), cancellationToken);
       }
@@ -67,7 +69,7 @@ public class TcpServer(IPAddress ipAddress, int port, int clientMessageMinBytes,
     {
       if (serverSocket.Connected) serverSocket.Shutdown(SocketShutdown.Both);
       serverSocket.Close();
-      Console.WriteLine($"Server {_endPoint}. Closed");
+      _logger.WriteServerLog(this, "Closed");
     }
   }
 
@@ -86,7 +88,7 @@ public class TcpServer(IPAddress ipAddress, int port, int clientMessageMinBytes,
       }
       catch (Exception e) when (e is not OperationCanceledException)
       {
-        Console.WriteLine($"Client {clientSocket.RemoteEndPoint}. Exception occured {e}");
+        _logger.WriteClientLog(clientSocket?.RemoteEndPoint?.ToString(), e);
       }
       finally
       {
@@ -94,7 +96,7 @@ public class TcpServer(IPAddress ipAddress, int port, int clientMessageMinBytes,
 
         if (clientSocket.Connected) clientSocket.Shutdown(SocketShutdown.Both);
         clientSocket.Close();
-        Console.WriteLine($"Client {clientEndPoint}. Disconnected");
+        _logger.WriteClientLog(clientEndPoint?.ToString(), "Disconnected");
       }
     }
   }
@@ -127,7 +129,7 @@ public class TcpServer(IPAddress ipAddress, int port, int clientMessageMinBytes,
     var command = CommandParser.ParseBytes(message.Span);
     var response = ApplyCommandToStore(command);
 
-    Logger.LogClientMessage(clientEndPoint, command, response);
+    _logger.WriteClientLog(clientEndPoint, command, response);
 
     return response;
   }
@@ -159,6 +161,8 @@ public class TcpServer(IPAddress ipAddress, int port, int clientMessageMinBytes,
         return UnknownCommandResponse;
     }
   }
+
+  public string ToLogString() => _endPoint.ToString();
 
   protected virtual void Dispose(bool disposing)
   {

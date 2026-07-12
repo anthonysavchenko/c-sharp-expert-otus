@@ -1,8 +1,9 @@
 using System.Text;
+using InMemoryCache.Core;
 
 namespace InMemoryCache.Parser;
 
-public readonly ref struct Command
+public readonly ref struct Command : ILogWritable
 {
   private readonly ReadOnlySpan<byte> _commandType;
 
@@ -32,7 +33,7 @@ public readonly ref struct Command
     _value = value;
   }
 
-  public override string ToString()
+  public string ToLogString()
   {
     var stringBuilder = new StringBuilder($"Command Type: {CommandType}, Key: {Key}");
 

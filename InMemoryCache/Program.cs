@@ -1,12 +1,15 @@
 ﻿using System.Net;
+using InMemoryCache.Log;
 using InMemoryCache.Server;
 using InMemoryCache.Store;
 
 var ipAddress = IPAddress.Parse("127.0.0.1");
 var port = 8080;
 var clientMessageMinBytes = 64;
+var logger = new NumbLogger();
+
 using var store = new SimpleStore();
-using var server = new TcpServer(ipAddress, port, clientMessageMinBytes, store);
+using var server = new TcpServer(ipAddress, port, clientMessageMinBytes, store, logger);
 
 using var cancellationTokenSource = new CancellationTokenSource();
 
