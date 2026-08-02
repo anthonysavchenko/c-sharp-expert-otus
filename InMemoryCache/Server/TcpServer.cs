@@ -13,24 +13,25 @@ namespace InMemoryCache.Server;
 // TODO: вынести Encoding.UTF8.GetString в Utils
 // TODO: выделить ядро (разделить сервер на 3 класса: сервер, клиент и ядро). В ядро перенести ApplyCommandToStore
 // TODO: создать отдельный класс для response, чтобы его можно было унаследовать от ILogWritable
+// TODO: Сообщать клиенту при попытке удаления несуществующего элемента
 
-public class TcpServer(IPAddress ipAddress, int port, int clientMessageMinBytes, SimpleStore store, ILogger logger) : IDisposable, ILogWritable
+public class TcpServer(IPAddress ipAddress, int port, int messageMinBytes, SimpleStore store, ILogger logger) : IDisposable, ILogWritable
 {
-  private readonly IPEndPoint _endPoint = new(ipAddress, port);
-
-  private readonly int _clientMessageMinBytes = clientMessageMinBytes;
-
-  private readonly ILogger _logger = logger;
-
-  private readonly SimpleStore _store = store;
-
   private static readonly byte[] OkResponse = CommandParser.GetBytes($"OK{Environment.NewLine}");
 
   private static readonly byte[] NullResponse = CommandParser.GetBytes($"NULL{Environment.NewLine}");
 
   private static readonly byte[] UnknownCommandResponse = CommandParser.GetBytes($"ERROR Unknown command{Environment.NewLine}");
 
-  private bool disposed;
+  private readonly IPEndPoint _endPoint = new(ipAddress, port);
+
+  private readonly int _messageMinBytes = messageMinBytes;
+
+  private readonly ILogger _logger = logger;
+
+  private readonly SimpleStore _store = store;
+
+  private bool _disposed;
 
   public async Task StartAsync(CancellationToken cancellationToken = default)
   {
@@ -42,7 +43,7 @@ public class TcpServer(IPAddress ipAddress, int port, int clientMessageMinBytes,
       serverSocket.Listen();
 
       _logger.WriteServerLog(this, "Started");
-      _logger.WriteServerLog(this, $"Client message min bytes for ArrayPool: {_clientMessageMinBytes}");
+      _logger.WriteServerLog(this, $"Client message min bytes for ArrayPool: {_messageMinBytes}");
 
       await WaitAndProcessClientsAsync(serverSocket, cancellationToken);
     }
@@ -103,7 +104,7 @@ public class TcpServer(IPAddress ipAddress, int port, int clientMessageMinBytes,
 
   private async Task<int> WaitAndProcessClientMessageAsync(Socket clientSocket, CancellationToken cancellationToken = default)
   {
-    var buffer = ArrayPool<byte>.Shared.Rent(_clientMessageMinBytes);
+    var buffer = ArrayPool<byte>.Shared.Rent(_messageMinBytes);
 
     try
     {
@@ -166,14 +167,14 @@ public class TcpServer(IPAddress ipAddress, int port, int clientMessageMinBytes,
 
   protected virtual void Dispose(bool disposing)
   {
-    if (!disposed)
+    if (!_disposed)
     {
       if (disposing)
       {
         _store.Dispose();
       }
 
-      disposed = true;
+      _disposed = true;
     }
   }
 

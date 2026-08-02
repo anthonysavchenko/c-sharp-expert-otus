@@ -1,18 +1,24 @@
-using System.Net;
-using System.Net.Sockets;
+using InMemoryCache.Client;
 using InMemoryCache.Log;
-using InMemoryCache.Parser;
 using InMemoryCache.Server;
 using InMemoryCache.Store;
+using System.Net;
 
 namespace InMemoryCache.Tests;
 
 public class TcpServerTests
 {
   [Fact]
-  public async Task CorrectSet()
+  public async Task CorrectSetGetDeleteAsync()
   {
-    var lines = await SendFromClentToServerAndGetConsoleOutputAsLines(["SET user:1 data", "GET user:1", "DEL user:1"]);
+    static async Task SendFromClientAsync(string ip, int port, CancellationToken cancellationToken)
+    {
+      await SendSetAsync(ip, port, "user:1", "data", cancellationToken);
+      await SendGetAsync(ip, port, "user:1", cancellationToken);
+      await SendDeleteAsync(ip, port, "user:1", cancellationToken);
+    }
+
+    var lines = await SendFromClentToServerAndGetConsoleOutputAsLinesAsync(SendFromClientAsync);
 
     Assert.Contains("Server [127.0.0.1:8080]. Started.", lines[0]);
     Assert.Contains("Server [127.0.0.1:8080]. Client message min bytes for ArrayPool: 64.", lines[1]);
@@ -48,9 +54,14 @@ public class TcpServerTests
   }
 
   [Fact]
-  public async Task IncorrectSet()
+  public async Task IncorrectSetAsync()
   {
-    var lines = await SendFromClentToServerAndGetConsoleOutputAsLines(["SET"]);
+    static async Task SendFromClientAsync(string ip, int port, CancellationToken cancellationToken)
+    {
+      await SendSetAsync(ip, port, "", "", cancellationToken);
+    }
+
+    var lines = await SendFromClentToServerAndGetConsoleOutputAsLinesAsync(SendFromClientAsync);
 
     Assert.Contains("Server [127.0.0.1:8080]. Started.", lines[0]);
     Assert.Contains("Server [127.0.0.1:8080]. Client message min bytes for ArrayPool: 64.", lines[1]);
@@ -67,7 +78,9 @@ public class TcpServerTests
     Assert.Contains("Server [127.0.0.1:8080]. Closed.", lines[5]);
   }
 
-  private static async Task<string[]> SendFromClentToServerAndGetConsoleOutputAsLines(string[] messages)
+  private static async Task<string[]> SendFromClentToServerAndGetConsoleOutputAsLinesAsync(
+    Func<string, int, CancellationToken, Task> sendFromClientAsync
+  )
   {
     using var stringWriterOutput = new StringWriter();
     var originalOutput = Console.Out;
@@ -76,7 +89,7 @@ public class TcpServerTests
 
     try
     {
-      await SendFromClientToServer(messages);
+      await SendFromClientToServer(sendFromClientAsync);
     }
     finally
     {
@@ -89,9 +102,10 @@ public class TcpServerTests
     return lines;
   }
 
-  private static async Task SendFromClientToServer(string[] messages)
+  private static async Task SendFromClientToServer(Func<string, int, CancellationToken, Task> sendFromClientAsync)
   {
-    var ipAddress = IPAddress.Parse("127.0.0.1");
+    var ip = "127.0.0.1";
+    var ipAddress = IPAddress.Parse(ip);
     var port = 8080;
     var clientMessageMinBytes = 64;
     var logger = new ConsoleLogger();
@@ -104,15 +118,10 @@ public class TcpServerTests
 
     var serverListeningTask = server.StartAsync(cancellationToken);
 
-    var serverEndPoint = new IPEndPoint(ipAddress, port);
+    await sendFromClientAsync(ip, port, cancellationToken);
 
-    foreach (var message in messages)
-    {
-      await SendFromClient(message, serverEndPoint, cancellationToken);
-
-      // Даем возможность серверу обработать данные клиента и записать лог в консоль
-      await Task.Delay(1000);
-    }
+    // Даем возможность серверу обработать данные клиента и записать лог в консоль
+    await Task.Delay(1000);
 
     await cancellationTokenSource.CancelAsync();
 
@@ -120,19 +129,36 @@ public class TcpServerTests
     await serverListeningTask;
   }
 
-  private static async Task SendFromClient(string message, EndPoint serverEndPoint, CancellationToken cancellationToken)
+  private static async Task SendSetAsync(string ip, int port, string key, string value, CancellationToken cancellationToken)
   {
-    using var client = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.IP);
+    using var client = new TcpClient();
 
-    await client.ConnectAsync(serverEndPoint, cancellationToken);
-    await client.SendAsync(CommandParser.GetBytes(message), SocketFlags.None, cancellationToken);
+    await client.ConnectAsync(ip, port, cancellationToken);
 
-    var response = new byte[64];
+    var response = await client.SetAsync(key, value, cancellationToken);
 
-    await client.ReceiveAsync(response, SocketFlags.None, cancellationToken);
-    await client.DisconnectAsync(reuseSocket: false, cancellationToken);
+    await client.DisconnectAsync(cancellationToken);
+  }
 
-    client.Shutdown(SocketShutdown.Both);
-    client.Close();
+  private static async Task SendGetAsync(string ip, int port, string key, CancellationToken cancellationToken)
+  {
+    using var client = new TcpClient();
+
+    await client.ConnectAsync(ip, port, cancellationToken);
+
+    var response = await client.GetAsync(key, cancellationToken);
+
+    await client.DisconnectAsync(cancellationToken);
+  }
+
+  private static async Task SendDeleteAsync(string ip, int port, string key, CancellationToken cancellationToken)
+  {
+    using var client = new TcpClient();
+
+    await client.ConnectAsync(ip, port, cancellationToken);
+
+    var response = await client.DeleteAsync(key, cancellationToken);
+
+    await client.DisconnectAsync(cancellationToken);
   }
 }
