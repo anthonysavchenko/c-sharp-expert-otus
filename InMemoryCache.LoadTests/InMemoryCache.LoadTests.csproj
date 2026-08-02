@@ -11,4 +11,8 @@
     <PackageReference Include="NBomber" Version="6.5.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\InMemoryCache\InMemoryCache.csproj" />
+  </ItemGroup>
+
 </Project>

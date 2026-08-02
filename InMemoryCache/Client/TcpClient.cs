@@ -5,8 +5,7 @@ using System.Text;
 namespace InMemoryCache.Client;
 
 // TODO: Попробовать переделать в AsyncDispose и вызывать Connect и Disconnect в конструкторе и Dispose, аналогично переделать и сервер
-// TODO: Отправлять команду SET частями, чтобы не выделять память под преобразования
-// TODO: Перенести Client в общий проект и использовать в юнит-тестах
+// TODO: Передавать в команде Get количество символов и отрезать лишнее при получении
 
 public class TcpClient(int messageMinBytes = 64) : IDisposable
 {
@@ -32,7 +31,7 @@ public class TcpClient(int messageMinBytes = 64) : IDisposable
     _socket.Close();
   }
 
-  public async Task<string> SetAsync(string key, string value, CancellationToken cancellationToken)
+  public async Task<string> SetAsync(string key, string value, CancellationToken cancellationToken = default)
   {
     var command = $"SET {key} {value}";
 
@@ -56,7 +55,7 @@ public class TcpClient(int messageMinBytes = 64) : IDisposable
     return response;
   }
 
-  public async Task<string> GetAsync(string key, CancellationToken cancellationToken)
+  public async Task<string> GetAsync(string key, CancellationToken cancellationToken = default)
   {
     var command = $"GET {key}";
 
@@ -65,7 +64,7 @@ public class TcpClient(int messageMinBytes = 64) : IDisposable
     return response;
   }
 
-  public async Task<string> DeleteAsync(string key, CancellationToken cancellationToken)
+  public async Task<string> DeleteAsync(string key, CancellationToken cancellationToken = default)
   {
     var command = $"DEL {key}";
 
