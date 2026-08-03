@@ -1,21 +1,20 @@
 using System.Buffers;
 using System.Net;
 using System.Net.Sockets;
+using System.Text.Json;
 using InMemoryCache.Core;
 using InMemoryCache.Parser;
-using InMemoryCache.Store;
 
 namespace InMemoryCache.Server;
 
 // TODO: перенести serverSocket в поле класса и вынести ServerSocketInit
-// TODO: использовать внутри TcpServer хранилище через интерфейс IStore
 // TODO: сократить количество параметров конструктора TcpServer
 // TODO: вынести Encoding.UTF8.GetString в Utils
 // TODO: выделить ядро (разделить сервер на 3 класса: сервер, клиент и ядро). В ядро перенести ApplyCommandToStore
 // TODO: создать отдельный класс для response, чтобы его можно было унаследовать от ILogWritable
 // TODO: Сообщать клиенту при попытке удаления несуществующего элемента
 
-public class TcpServer(IPAddress ipAddress, int port, int messageMinBytes, SimpleStore store, ILogger logger) : IDisposable, ILogWritable
+public class TcpServer(IPAddress ipAddress, int port, int messageMinBytes, IStore store, ILogger logger) : ILogWritable, IDisposable
 {
   private static readonly byte[] OkResponse = CommandParser.GetBytes($"OK{Environment.NewLine}");
 
@@ -23,13 +22,19 @@ public class TcpServer(IPAddress ipAddress, int port, int messageMinBytes, Simpl
 
   private static readonly byte[] UnknownCommandResponse = CommandParser.GetBytes($"ERROR Unknown command{Environment.NewLine}");
 
+  private static readonly byte[] NullIsNotAllowedResponse = CommandParser.GetBytes($"ERROR Null value is not allowed{Environment.NewLine}");
+
+  private static readonly byte[] WrongJsonFormatResponse = CommandParser.GetBytes($"ERROR Wrong JSON format{Environment.NewLine}");
+
+  private static readonly byte[] KeyWasNotFoundResponse = CommandParser.GetBytes($"ERROR Key was not found{Environment.NewLine}");
+
   private readonly IPEndPoint _endPoint = new(ipAddress, port);
 
   private readonly int _messageMinBytes = messageMinBytes;
 
   private readonly ILogger _logger = logger;
 
-  private readonly SimpleStore _store = store;
+  private readonly IStore _store = store;
 
   private bool _disposed;
 
@@ -144,19 +149,40 @@ public class TcpServer(IPAddress ipAddress, int port, int messageMinBytes, Simpl
     switch (command.CommandType)
     {
       case CommandParser.SetCommandType:
-        _store.Set(command.Key, command.Value);
+        {
+          UserProfile? profile;
 
-        return OkResponse;
+          try
+          {
+            profile = JsonSerializer.Deserialize<UserProfile>(command.Value);
+          }
+          catch (Exception e) when (e is JsonException or NotSupportedException)
+          {
+            return WrongJsonFormatResponse;
+          }
 
+          if (profile == null) return NullIsNotAllowedResponse;
+
+          _store.Set(command.Key, profile);
+
+          return OkResponse;
+        }
       case CommandParser.GetCommandType:
-        var value = _store.Get(command.Key);
+        {
+          var profile = _store.Get(command.Key);
 
-        return value ?? NullResponse;
+          if (profile == null) return NullResponse;
 
+          var value = JsonSerializer.SerializeToUtf8Bytes(profile);
+
+          return value;
+        }
       case CommandParser.DeleteCommandType:
-        _store.Delete(command.Key);
+        {
+          var status = _store.Delete(command.Key);
 
-        return OkResponse;
+          return status ? OkResponse : KeyWasNotFoundResponse;
+        }
 
       default:
         return UnknownCommandResponse;
