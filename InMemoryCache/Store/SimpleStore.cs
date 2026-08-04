@@ -1,6 +1,9 @@
+using System.Text.Json;
+using InMemoryCache.Core;
+
 namespace InMemoryCache.Store;
 
-public class SimpleStore : IDisposable
+public class SimpleStore : IStore
 {
   private readonly ReaderWriterLockSlim _lock = new();
 
@@ -14,20 +17,21 @@ public class SimpleStore : IDisposable
 
   private bool _disposed;
 
-  public void Set(string key, byte[] value)
+  public void Set(string key, UserProfile profile)
   {
     ArgumentException.ThrowIfNullOrEmpty(key, nameof(key));
-    ArgumentNullException.ThrowIfNull(value, nameof(value));
-    ArgumentOutOfRangeException.ThrowIfEqual(value.Length, 0, nameof(value));
+    ArgumentNullException.ThrowIfNull(profile, nameof(profile));
+
+    var value = JsonSerializer.SerializeToUtf8Bytes(profile);
 
     void Writer() => _storage[key] = value;
 
-    WriteLocked(Writer);
+    LockedWrite(Writer);
 
     Interlocked.Increment(ref _setCount);
   }
 
-  private void WriteLocked(Action writer)
+  private void LockedWrite(Action writer)
   {
     _lock.EnterWriteLock();
 
@@ -41,7 +45,7 @@ public class SimpleStore : IDisposable
     }
   }
 
-  public byte[]? Get(string key)
+  public UserProfile? Get(string key)
   {
     ArgumentException.ThrowIfNullOrEmpty(key, nameof(key));
 
@@ -49,14 +53,16 @@ public class SimpleStore : IDisposable
 
     void Reader() => value = _storage.GetValueOrDefault(key);
 
-    ReadLocked(Reader);
+    LockedRead(Reader);
+
+    var profile = JsonSerializer.Deserialize<UserProfile>(value);
 
     Interlocked.Increment(ref _getCount);
 
-    return value;
+    return profile;
   }
 
-  private void ReadLocked(Action reader)
+  private void LockedRead(Action reader)
   {
     _lock.EnterReadLock();
 
@@ -70,15 +76,19 @@ public class SimpleStore : IDisposable
     }
   }
 
-  public void Delete(string key)
+  public bool Delete(string key)
   {
     ArgumentException.ThrowIfNullOrEmpty(key, nameof(key));
 
-    void Writer() => _storage.Remove(key);
+    bool status = false;
 
-    WriteLocked(Writer);
+    void Writer() => status = _storage.Remove(key);
+
+    LockedWrite(Writer);
 
     Interlocked.Increment(ref _deleteCount);
+
+    return status;
   }
 
   public (long, long, long) GetStatistics()
