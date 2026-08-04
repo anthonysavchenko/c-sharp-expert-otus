@@ -55,7 +55,9 @@ public class SimpleStore : IStore
 
     LockedRead(Reader);
 
-    var profile = JsonSerializer.Deserialize<UserProfile>(value);
+    var profile = (UserProfile?)null;
+
+    if (value != null) profile = JsonSerializer.Deserialize<UserProfile>(value);
 
     Interlocked.Increment(ref _getCount);
 

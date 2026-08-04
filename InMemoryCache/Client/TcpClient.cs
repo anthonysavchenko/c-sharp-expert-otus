@@ -1,6 +1,9 @@
+using System.Buffers;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using System.Text.Json;
+using InMemoryCache.Core;
 
 namespace InMemoryCache.Client;
 
@@ -31,8 +34,10 @@ public class TcpClient(int messageMinBytes = 64) : IDisposable
     _socket.Close();
   }
 
-  public async Task<string> SetAsync(string key, string value, CancellationToken cancellationToken = default)
+  public async Task<string> SetAsync(string key, UserProfile profile, CancellationToken cancellationToken = default)
   {
+    var value = JsonSerializer.Serialize(profile);
+
     var command = $"SET {key} {value}";
 
     var response = await SendAsync(command, cancellationToken);
@@ -46,22 +51,33 @@ public class TcpClient(int messageMinBytes = 64) : IDisposable
 
     await _socket.SendAsync(commandBytes, SocketFlags.None, cancellationToken);
 
-    var responseBytes = new byte[_messageMinBytes];
+    var buffer = ArrayPool<byte>.Shared.Rent(_messageMinBytes);
 
-    await _socket.ReceiveAsync(responseBytes, SocketFlags.None, cancellationToken);
+    try
+    {
+      var bytesReceived = await _socket.ReceiveAsync(buffer, SocketFlags.None, cancellationToken);
 
-    var response = Encoding.UTF8.GetString(responseBytes);
+      var response = Encoding.UTF8.GetString(buffer.AsSpan(0, bytesReceived));
 
-    return response;
+      return response;
+    }
+    finally
+    {
+      ArrayPool<byte>.Shared.Return(buffer);
+    }
   }
 
-  public async Task<string> GetAsync(string key, CancellationToken cancellationToken = default)
+  public async Task<UserProfile?> GetAsync(string key, CancellationToken cancellationToken = default)
   {
     var command = $"GET {key}";
 
     var response = await SendAsync(command, cancellationToken);
 
-    return response;
+    if (response.StartsWith("NULL")) return null;
+
+    var profile = JsonSerializer.Deserialize<UserProfile>(response);
+
+    return profile;
   }
 
   public async Task<string> DeleteAsync(string key, CancellationToken cancellationToken = default)

@@ -1,4 +1,5 @@
 using InMemoryCache.Client;
+using InMemoryCache.Core;
 using InMemoryCache.Log;
 using InMemoryCache.Server;
 using InMemoryCache.Store;
@@ -13,7 +14,7 @@ public class TcpServerTests
   {
     static async Task SendFromClientAsync(string ip, int port, CancellationToken cancellationToken)
     {
-      await SendSetAsync(ip, port, "user:1", "data", cancellationToken);
+      await SendSetAsync(ip, port, "user:1", new UserProfile() { Username = "John Smith" }, cancellationToken);
       await SendGetAsync(ip, port, "user:1", cancellationToken);
       await SendDeleteAsync(ip, port, "user:1", cancellationToken);
     }
@@ -58,7 +59,7 @@ public class TcpServerTests
   {
     static async Task SendFromClientAsync(string ip, int port, CancellationToken cancellationToken)
     {
-      await SendSetAsync(ip, port, "", "", cancellationToken);
+      await SendSetAsync(ip, port, "", new UserProfile(), cancellationToken);
     }
 
     var lines = await SendFromClentToServerAndGetConsoleOutputAsLinesAsync(SendFromClientAsync);
@@ -129,13 +130,13 @@ public class TcpServerTests
     await serverListeningTask;
   }
 
-  private static async Task SendSetAsync(string ip, int port, string key, string value, CancellationToken cancellationToken)
+  private static async Task SendSetAsync(string ip, int port, string key, UserProfile profile, CancellationToken cancellationToken)
   {
     using var client = new TcpClient();
 
     await client.ConnectAsync(ip, port, cancellationToken);
 
-    var response = await client.SetAsync(key, value, cancellationToken);
+    var response = await client.SetAsync(key, profile, cancellationToken);
 
     await client.DisconnectAsync(cancellationToken);
   }
