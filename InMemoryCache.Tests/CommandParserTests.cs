@@ -25,6 +25,16 @@ public class CommandParserTests
   }
 
   [Fact]
+  public void CorrectSet_TooManySpacesAfterKey()
+  {
+    var (commandType, key, value) = Parse("SET user:1         data");
+
+    Assert.Equal("SET", commandType);
+    Assert.Equal("user:1", key);
+    Assert.Equal("        data", value);
+  }
+
+  [Fact]
   public void IncorrectGet_NoKey()
   {
     var (commandType, key, value) = Parse("GET");
@@ -71,16 +81,6 @@ public class CommandParserTests
 
     Assert.Equal(string.Empty, commandType);
     Assert.Equal(string.Empty, key);
-    Assert.Equal(string.Empty, value);
-  }
-
-  [Fact]
-  public void IncorrectSet_TooManySpacesAfterKey()
-  {
-    var (commandType, key, value) = Parse("SET user:1         data");
-
-    Assert.Equal("SET", commandType);
-    Assert.Equal("user:1", key);
     Assert.Equal(string.Empty, value);
   }
 

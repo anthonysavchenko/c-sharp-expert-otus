@@ -13,6 +13,7 @@ namespace InMemoryCache.Server;
 // TODO: выделить ядро (разделить сервер на 3 класса: сервер, клиент и ядро). В ядро перенести ApplyCommandToStore
 // TODO: создать отдельный класс для response, чтобы его можно было унаследовать от ILogWritable
 // TODO: Сообщать клиенту при попытке удаления несуществующего элемента
+// TODO: Разобраться, можно ли слать байты несколькими сообщениями и как их правильно обрабатывать
 
 public class TcpServer(IPAddress ipAddress, int port, int messageMinBytes, IStore store, ILogger logger) : ILogWritable, IDisposable
 {

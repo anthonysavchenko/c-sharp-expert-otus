@@ -5,7 +5,7 @@ using InMemoryCache.Store;
 
 var ipAddress = IPAddress.Parse("127.0.0.1");
 var port = 8080;
-var clientMessageMinBytes = 64;
+var clientMessageMinBytes = 128;
 var logger = new NumbLogger();
 
 using var store = new SimpleStore();

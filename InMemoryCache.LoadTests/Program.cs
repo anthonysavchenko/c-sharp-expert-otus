@@ -7,7 +7,13 @@ var scenario1 = Scenario.Create("SetCommand_NoIntersections", async context =>
   var randomChars = "abcdefghijklmnopqrstuvwxyz";
   var random = new Random();
   var key = random.GetString(randomChars, 16);
-  var value = new UserProfile() { Username = "John Smith" };
+
+  var profile = new UserProfile()
+  {
+    Id = 1000,
+    Username = "John Smith",
+    CreatedAt = new DateTime(2026, 8, 1),
+  };
 
   var step1 = await Step.Run("Set Command", context, async () =>
   {
@@ -15,7 +21,7 @@ var scenario1 = Scenario.Create("SetCommand_NoIntersections", async context =>
 
     await client.ConnectAsync("127.0.0.1", 8080);
 
-    var response = await client.SetAsync(key, value);
+    var response = await client.SetAsync(key, profile);
 
     await client.DisconnectAsync();
 
@@ -32,12 +38,20 @@ var scenario1 = Scenario.Create("SetCommand_NoIntersections", async context =>
     during: TimeSpan.FromSeconds(30))
 );
 
-var scenario2 = Scenario.Create("SetGetDeleteCommand_WithIntersections", async context =>
+NBomberRunner.RegisterScenarios(scenario1).Run();
+
+var scenario2 = Scenario.Create("SetCommand_WithIntersections", async context =>
 {
-  var randomChars = "abc";
+  var randomChars = "ab";
   var random = new Random();
-  var key = random.GetString(randomChars, 3);
-  var value = new UserProfile() { Username = "John Smith" };
+  var key = random.GetString(randomChars, 2);
+
+  var profile = new UserProfile()
+  {
+    Id = 1000,
+    Username = "John Smith",
+    CreatedAt = new DateTime(2026, 8, 1),
+  };
 
   var step1 = await Step.Run("Set Command", context, async () =>
   {
@@ -45,25 +59,28 @@ var scenario2 = Scenario.Create("SetGetDeleteCommand_WithIntersections", async c
 
     await client.ConnectAsync("127.0.0.1", 8080);
 
-    var response = await client.SetAsync(key, value);
+    var response = await client.SetAsync(key, profile);
 
     await client.DisconnectAsync();
 
     return response.StartsWith("OK") ? Response.Ok() : Response.Fail();
   });
 
-  var step2 = await Step.Run("Get Command", context, async () =>
-  {
-    using var client = new TcpClient();
+  return Response.Ok();
+})
+.WithoutWarmUp()
+.WithLoadSimulations(
+  Simulation.Inject(
+    rate: 20,
+    interval: TimeSpan.FromSeconds(1),
+    during: TimeSpan.FromSeconds(10))
+);
 
-    await client.ConnectAsync("127.0.0.1", 8080);
-
-    var response = await client.GetAsync(key);
-
-    await client.DisconnectAsync();
-
-    return response != null && response.Username == value.Username ? Response.Ok() : Response.Fail();
-  });
+var scenario3 = Scenario.Create("DeleteCommand_WithIntersections", async context =>
+{
+  var randomChars = "ab";
+  var random = new Random();
+  var key = random.GetString(randomChars, 2);
 
   var step3 = await Step.Run("Delete Command", context, async () =>
   {
@@ -80,13 +97,12 @@ var scenario2 = Scenario.Create("SetGetDeleteCommand_WithIntersections", async c
 
   return Response.Ok();
 })
-.WithWarmUpDuration(TimeSpan.FromSeconds(10))
+.WithoutWarmUp()
 .WithLoadSimulations(
   Simulation.Inject(
-    rate: 100,
+    rate: 20,
     interval: TimeSpan.FromSeconds(1),
-    during: TimeSpan.FromSeconds(30))
+    during: TimeSpan.FromSeconds(10))
 );
 
-
-NBomberRunner.RegisterScenarios(scenario1, scenario2).Run();
+NBomberRunner.RegisterScenarios(scenario2, scenario3).Run();

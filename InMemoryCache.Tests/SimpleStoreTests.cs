@@ -112,6 +112,7 @@ public class SimpleStoreTests
     };
 
     store.Set(key, value);
+
     var valueFromStore = store.Get(key);
     var deleteStatus = store.Delete(key);
     var valueFromStoreAfterDelete = store.Get(key);
