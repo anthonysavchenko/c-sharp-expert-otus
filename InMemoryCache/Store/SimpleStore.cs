@@ -24,11 +24,16 @@ public class SimpleStore : IStore
 
     var value = JsonSerializer.SerializeToUtf8Bytes(profile);
 
-    void Writer() => _storage[key] = value;
-
-    LockedWrite(Writer);
+    Write(key, value);
 
     Interlocked.Increment(ref _setCount);
+  }
+
+  private void Write(string key, byte[] value)
+  {
+    void WriterAction() => _storage[key] = value;
+
+    LockedWrite(WriterAction);
   }
 
   private void LockedWrite(Action writer)
@@ -49,12 +54,7 @@ public class SimpleStore : IStore
   {
     ArgumentException.ThrowIfNullOrEmpty(key, nameof(key));
 
-    var value = (byte[]?)null;
-
-    void Reader() => value = _storage.GetValueOrDefault(key);
-
-    LockedRead(Reader);
-
+    var value = Read(key);
     var profile = (UserProfile?)null;
 
     if (value != null) profile = JsonSerializer.Deserialize<UserProfile>(value);
@@ -62,6 +62,17 @@ public class SimpleStore : IStore
     Interlocked.Increment(ref _getCount);
 
     return profile;
+  }
+
+  private byte[]? Read(string key)
+  {
+    var value = (byte[]?)null;
+
+    void ReaderAction() => value = _storage.GetValueOrDefault(key);
+
+    LockedRead(ReaderAction);
+
+    return value;
   }
 
   private void LockedRead(Action reader)
@@ -82,13 +93,20 @@ public class SimpleStore : IStore
   {
     ArgumentException.ThrowIfNullOrEmpty(key, nameof(key));
 
-    bool status = false;
-
-    void Writer() => status = _storage.Remove(key);
-
-    LockedWrite(Writer);
+    bool status = TryDelete(key);
 
     Interlocked.Increment(ref _deleteCount);
+
+    return status;
+  }
+
+  private bool TryDelete(string key)
+  {
+    bool status = false;
+
+    void WriterAction() => status = _storage.Remove(key);
+
+    LockedWrite(WriterAction);
 
     return status;
   }
