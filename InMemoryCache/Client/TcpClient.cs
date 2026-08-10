@@ -7,16 +7,25 @@ using InMemoryCache.Core;
 
 namespace InMemoryCache.Client;
 
-// TODO: Попробовать переделать в AsyncDispose и вызывать Connect и Disconnect в конструкторе и Dispose, аналогично переделать и сервер
-// TODO: Учесть, что арендованный буффер может быть меньше сообщения и его нужно принимать в цикле
-
-public class TcpClient(int messageMinBytes = 128) : IDisposable
+public sealed class TcpClient(int messageMinBytes = 128) : IDisposable, IAsyncDisposable
 {
   private readonly Socket _socket = new(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.IP);
 
   private readonly int _messageMinBytes = messageMinBytes;
 
-  private bool _disposed;
+  public static async Task<TcpClient> CreateAsync(
+    string serverIp,
+    int serverPort,
+    int messageMinBytes = 128,
+    CancellationToken cancellationToken = default
+  )
+  {
+    var client = new TcpClient(messageMinBytes);
+
+    await client.ConnectAsync(serverIp, serverPort, cancellationToken);
+
+    return client;
+  }
 
   public async Task ConnectAsync(string ip, int port, CancellationToken cancellationToken = default)
   {
@@ -26,12 +35,20 @@ public class TcpClient(int messageMinBytes = 128) : IDisposable
     await _socket.ConnectAsync(ipAndPort, cancellationToken);
   }
 
-  public async Task DisconnectAsync(CancellationToken cancellationToken = default)
+  public static async Task<string> SetAsync(
+    string serverIp,
+    int serverPort,
+    string key,
+    UserProfile profile,
+    int messageMinBytes = 128,
+    CancellationToken cancellationToken = default
+  )
   {
-    await _socket.DisconnectAsync(reuseSocket: false, cancellationToken);
+    await using var client = await CreateAsync(serverIp, serverPort, messageMinBytes, cancellationToken);
 
-    _socket.Shutdown(SocketShutdown.Both);
-    _socket.Close();
+    var response = await client.SetAsync(key, profile, cancellationToken);
+
+    return response;
   }
 
   public async Task<string> SetAsync(string key, UserProfile profile, CancellationToken cancellationToken = default)
@@ -64,6 +81,21 @@ public class TcpClient(int messageMinBytes = 128) : IDisposable
     }
   }
 
+  public static async Task<UserProfile?> GetAsync(
+    string serverIp,
+    int serverPort,
+    string key,
+    int messageMinBytes = 128,
+    CancellationToken cancellationToken = default
+  )
+  {
+    await using var client = await CreateAsync(serverIp, serverPort, messageMinBytes, cancellationToken);
+
+    var response = await client.GetAsync(key, cancellationToken);
+
+    return response;
+  }
+
   public async Task<UserProfile?> GetAsync(string key, CancellationToken cancellationToken = default)
   {
     var command = $"GET {key}";
@@ -76,6 +108,21 @@ public class TcpClient(int messageMinBytes = 128) : IDisposable
     return profile;
   }
 
+  public static async Task<string> DeleteAsync(
+    string serverIp,
+    int serverPort,
+    string key,
+    int messageMinBytes = 128,
+    CancellationToken cancellationToken = default
+  )
+  {
+    await using var client = await CreateAsync(serverIp, serverPort, messageMinBytes, cancellationToken);
+
+    var response = await client.DeleteAsync(key, cancellationToken);
+
+    return response;
+  }
+
   public async Task<string> DeleteAsync(string key, CancellationToken cancellationToken = default)
   {
     var command = $"DEL {key}";
@@ -84,22 +131,28 @@ public class TcpClient(int messageMinBytes = 128) : IDisposable
     return response;
   }
 
-  protected virtual void Dispose(bool disposing)
+  public async Task DisconnectAsync(CancellationToken cancellationToken = default)
   {
-    if (!_disposed)
-    {
-      if (disposing)
-      {
-        _socket.Dispose();
-      }
+    _socket.Shutdown(SocketShutdown.Both);
 
-      _disposed = true;
-    }
+    await _socket.DisconnectAsync(reuseSocket: false, cancellationToken);
+
+    _socket.Close();
   }
 
-  void IDisposable.Dispose()
+  public void Dispose()
   {
-    Dispose(disposing: true);
-    GC.SuppressFinalize(this);
+    _socket.Shutdown(SocketShutdown.Both);
+    _socket.Disconnect(reuseSocket: false);
+    _socket.Dispose();
+  }
+
+  public async ValueTask DisposeAsync()
+  {
+    _socket.Shutdown(SocketShutdown.Both);
+
+    await _socket.DisconnectAsync(reuseSocket: false).ConfigureAwait(false);
+
+    _socket.Dispose();
   }
 }

@@ -17,13 +17,7 @@ var scenario1 = Scenario.Create("SetCommand_NoIntersections", async context =>
 
   var step1 = await Step.Run("Set Command", context, async () =>
   {
-    using var client = new TcpClient();
-
-    await client.ConnectAsync("127.0.0.1", 8080);
-
-    var response = await client.SetAsync(key, profile);
-
-    await client.DisconnectAsync();
+    var response = await TcpClient.SetAsync("127.0.0.1", 8080, key, profile);
 
     return response.StartsWith("OK") ? Response.Ok() : Response.Fail();
   });
@@ -55,13 +49,7 @@ var scenario2 = Scenario.Create("SetCommand_WithIntersections", async context =>
 
   var step1 = await Step.Run("Set Command", context, async () =>
   {
-    using var client = new TcpClient();
-
-    await client.ConnectAsync("127.0.0.1", 8080);
-
-    var response = await client.SetAsync(key, profile);
-
-    await client.DisconnectAsync();
+    var response = await TcpClient.SetAsync("127.0.0.1", 8080, key, profile);
 
     return response.StartsWith("OK") ? Response.Ok() : Response.Fail();
   });
@@ -84,13 +72,7 @@ var scenario3 = Scenario.Create("DeleteCommand_WithIntersections", async context
 
   var step3 = await Step.Run("Delete Command", context, async () =>
   {
-    using var client = new TcpClient();
-
-    await client.ConnectAsync("127.0.0.1", 8080);
-
-    var response = await client.DeleteAsync(key);
-
-    await client.DisconnectAsync();
+    var response = await TcpClient.DeleteAsync("127.0.0.1", 8080, key);
 
     return response.StartsWith("OK") ? Response.Ok() : Response.Fail();
   });
