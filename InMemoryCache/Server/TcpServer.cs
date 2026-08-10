@@ -110,15 +110,25 @@ public class TcpServer(IPAddress ipAddress, int port, int messageMinBytes, IStor
 
   private async Task<int> WaitAndProcessClientMessageAsync(Socket clientSocket, CancellationToken cancellationToken = default)
   {
-    var buffer = ArrayPool<byte>.Shared.Rent(_messageMinBytes);
+    var accumulator = ArrayPool<byte>.Shared.Rent(_messageMinBytes);
+    var packet = ArrayPool<byte>.Shared.Rent(_messageMinBytes);
+    var accumulatorIndex = 0;
 
     try
     {
-      var bytesReceived = await clientSocket.ReceiveAsync(buffer, SocketFlags.None, cancellationToken);
+      ReceiveClientMessage(clientSocket, accumulator, )
+      var bytesReceived = 0;
+
+      do
+      {
+        bytesReceived = await clientSocket.ReceiveAsync(packet, SocketFlags.None, cancellationToken);
+        packet.CopyTo(accumulator, accumulatorIndex);
+      }
+      while (bytesReceived != 0);
 
       if (bytesReceived != 0)
       {
-        var response = ProcessClientMessage(buffer.AsMemory(0, bytesReceived), clientSocket.RemoteEndPoint);
+        var response = ProcessClientMessage(accumulator.AsMemory(0, bytesReceived), clientSocket.RemoteEndPoint);
 
         await clientSocket.SendAsync(response, SocketFlags.None, cancellationToken);
       }
@@ -127,7 +137,59 @@ public class TcpServer(IPAddress ipAddress, int port, int messageMinBytes, IStor
     }
     finally
     {
-      ArrayPool<byte>.Shared.Return(buffer);
+      ArrayPool<byte>.Shared.Return(accumulator);
+    }
+  }
+
+  private async Task<byte[]> ReceiveClientMessage(
+    Socket clientSocket,
+    int bytesWritten,
+    CancellationToken cancellationToken = default
+  )
+  {
+    var accumulator = ArrayPool<byte>.Shared.Rent(_messageMinBytes);
+    var bytesReceived = 0;
+
+    try
+    {
+      do
+      {
+        bytesReceived = await ReceiveClientMessageChunkAsync(clientSocket, accumulator, bytesWritten, cancellationToken);
+        bytesWritten += bytesReceived;
+      }
+      while (bytesReceived != 0);
+    }
+    finally
+    {
+      ArrayPool<byte>.Shared.Return(accumulator);
+    }
+  }
+
+  private async Task<int> ReceiveClientMessageChunkAsync(
+    Socket clientSocket,
+    byte[] accumulator,
+    int bytesWritten,
+    CancellationToken cancellationToken = default
+  )
+  {
+    var chunk = ArrayPool<byte>.Shared.Rent(_messageMinBytes);
+    var bytesReceived = 0;
+
+    try
+    {
+      bytesReceived = await clientSocket.ReceiveAsync(chunk, SocketFlags.None, cancellationToken);
+
+      var accumulatorFreeBytes = _messageMinBytes - bytesWritten;
+
+      if (bytesReceived > accumulatorFreeBytes) throw new IndexOutOfRangeException();
+
+      chunk.CopyTo(accumulator, bytesWritten);
+
+      return bytesReceived;
+    }
+    finally
+    {
+      ArrayPool<byte>.Shared.Return(chunk);
     }
   }
 
