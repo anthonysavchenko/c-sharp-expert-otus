@@ -4,6 +4,7 @@ using System.Net.Sockets;
 using System.Text;
 using System.Text.Json;
 using InMemoryCache.Core;
+using InMemoryCache.Core.Protocol;
 
 namespace InMemoryCache.Client;
 
@@ -47,13 +48,13 @@ public class TcpClient(int messageMinBytes = 128) : IDisposable
   {
     var commandBytes = Encoding.UTF8.GetBytes(command);
 
-    await _socket.SendAsync(commandBytes, SocketFlags.None, cancellationToken);
+    await FrameProtocol.SendMessageAsync(_socket, commandBytes, cancellationToken);
 
     var buffer = ArrayPool<byte>.Shared.Rent(_messageMinBytes);
 
     try
     {
-      var bytesReceived = await _socket.ReceiveAsync(buffer, SocketFlags.None, cancellationToken);
+      var bytesReceived = await FrameProtocol.ReceiveMessageAsync(_socket, buffer, _messageMinBytes, cancellationToken);
       var response = Encoding.UTF8.GetString(buffer.AsSpan(0, bytesReceived));
 
       return response;

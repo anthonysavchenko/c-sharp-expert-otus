@@ -3,6 +3,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text.Json;
 using InMemoryCache.Core;
+using InMemoryCache.Core.Protocol;
 using InMemoryCache.Parser;
 
 namespace InMemoryCache.Server;
@@ -13,7 +14,7 @@ namespace InMemoryCache.Server;
 // TODO: выделить ядро (разделить сервер на 3 класса: сервер, клиент и ядро). В ядро перенести ApplyCommandToStore
 // TODO: создать отдельный класс для response, чтобы его можно было унаследовать от ILogWritable
 // TODO: Сообщать клиенту при попытке удаления несуществующего элемента
-// TODO: Разобраться, можно ли слать байты несколькими сообщениями и как их правильно обрабатывать
+// TODO: Переделать из статического класса FrameProtocol в отдельный класс clientSocket вместе с буфером из ArrayPool и перенести туда методы чтения/записи сообщений, а bytesReceived превратить в поле _disconnected
 
 public class TcpServer(IPAddress ipAddress, int port, int messageMinBytes, IStore store, ILogger logger) : ILogWritable, IDisposable
 {
@@ -110,86 +111,24 @@ public class TcpServer(IPAddress ipAddress, int port, int messageMinBytes, IStor
 
   private async Task<int> WaitAndProcessClientMessageAsync(Socket clientSocket, CancellationToken cancellationToken = default)
   {
-    var accumulator = ArrayPool<byte>.Shared.Rent(_messageMinBytes);
-    var packet = ArrayPool<byte>.Shared.Rent(_messageMinBytes);
-    var accumulatorIndex = 0;
+    var message = ArrayPool<byte>.Shared.Rent(_messageMinBytes);
 
     try
     {
-      ReceiveClientMessage(clientSocket, accumulator, )
-      var bytesReceived = 0;
-
-      do
-      {
-        bytesReceived = await clientSocket.ReceiveAsync(packet, SocketFlags.None, cancellationToken);
-        packet.CopyTo(accumulator, accumulatorIndex);
-      }
-      while (bytesReceived != 0);
+      var bytesReceived = await FrameProtocol.ReceiveMessageAsync(clientSocket, message, _messageMinBytes, cancellationToken);
 
       if (bytesReceived != 0)
       {
-        var response = ProcessClientMessage(accumulator.AsMemory(0, bytesReceived), clientSocket.RemoteEndPoint);
+        var response = ProcessClientMessage(message.AsMemory(0, bytesReceived), clientSocket.RemoteEndPoint);
 
-        await clientSocket.SendAsync(response, SocketFlags.None, cancellationToken);
+        await FrameProtocol.SendMessageAsync(clientSocket, response, cancellationToken);
       }
 
       return bytesReceived;
     }
     finally
     {
-      ArrayPool<byte>.Shared.Return(accumulator);
-    }
-  }
-
-  private async Task<byte[]> ReceiveClientMessage(
-    Socket clientSocket,
-    int bytesWritten,
-    CancellationToken cancellationToken = default
-  )
-  {
-    var accumulator = ArrayPool<byte>.Shared.Rent(_messageMinBytes);
-    var bytesReceived = 0;
-
-    try
-    {
-      do
-      {
-        bytesReceived = await ReceiveClientMessageChunkAsync(clientSocket, accumulator, bytesWritten, cancellationToken);
-        bytesWritten += bytesReceived;
-      }
-      while (bytesReceived != 0);
-    }
-    finally
-    {
-      ArrayPool<byte>.Shared.Return(accumulator);
-    }
-  }
-
-  private async Task<int> ReceiveClientMessageChunkAsync(
-    Socket clientSocket,
-    byte[] accumulator,
-    int bytesWritten,
-    CancellationToken cancellationToken = default
-  )
-  {
-    var chunk = ArrayPool<byte>.Shared.Rent(_messageMinBytes);
-    var bytesReceived = 0;
-
-    try
-    {
-      bytesReceived = await clientSocket.ReceiveAsync(chunk, SocketFlags.None, cancellationToken);
-
-      var accumulatorFreeBytes = _messageMinBytes - bytesWritten;
-
-      if (bytesReceived > accumulatorFreeBytes) throw new IndexOutOfRangeException();
-
-      chunk.CopyTo(accumulator, bytesWritten);
-
-      return bytesReceived;
-    }
-    finally
-    {
-      ArrayPool<byte>.Shared.Return(chunk);
+      ArrayPool<byte>.Shared.Return(message);
     }
   }
 
