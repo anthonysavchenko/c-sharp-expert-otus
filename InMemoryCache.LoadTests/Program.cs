@@ -19,7 +19,7 @@ var scenario1 = Scenario.Create("SetCommand_NoIntersections", async context =>
   {
     using var client = new TcpClient();
 
-    await client.ConnectAsync("127.0.0.1", 8080);
+    await client.ConnectAsync("127.0.0.1", 8180);
 
     var response = await client.SetAsync(key, profile);
 
@@ -57,7 +57,7 @@ var scenario2 = Scenario.Create("SetCommand_WithIntersections", async context =>
   {
     using var client = new TcpClient();
 
-    await client.ConnectAsync("127.0.0.1", 8080);
+    await client.ConnectAsync("127.0.0.1", 8180);
 
     var response = await client.SetAsync(key, profile);
 
@@ -86,7 +86,7 @@ var scenario3 = Scenario.Create("DeleteCommand_WithIntersections", async context
   {
     using var client = new TcpClient();
 
-    await client.ConnectAsync("127.0.0.1", 8080);
+    await client.ConnectAsync("127.0.0.1", 8180);
 
     var response = await client.DeleteAsync(key);
 
