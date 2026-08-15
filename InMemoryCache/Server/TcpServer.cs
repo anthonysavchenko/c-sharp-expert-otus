@@ -8,6 +8,7 @@ using InMemoryCache.Parser;
 
 namespace InMemoryCache.Server;
 
+// TODO: Переделать в AsyncDispose и вызывать Connect и Disconnect в конструкторе и Dispose
 // TODO: перенести serverSocket в поле класса и вынести ServerSocketInit
 // TODO: сократить количество параметров конструктора TcpServer
 // TODO: вынести Encoding.UTF8.GetString в Utils
