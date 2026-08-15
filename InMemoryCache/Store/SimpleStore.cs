@@ -1,6 +1,9 @@
+using System.Text.Json;
+using InMemoryCache.Core;
+
 namespace InMemoryCache.Store;
 
-public class SimpleStore : IDisposable
+public class SimpleStore : IStore
 {
   private readonly ReaderWriterLockSlim _lock = new();
 
@@ -14,20 +17,26 @@ public class SimpleStore : IDisposable
 
   private bool _disposed;
 
-  public void Set(string key, byte[] value)
+  public void Set(string key, UserProfile profile)
   {
     ArgumentException.ThrowIfNullOrEmpty(key, nameof(key));
-    ArgumentNullException.ThrowIfNull(value, nameof(value));
-    ArgumentOutOfRangeException.ThrowIfEqual(value.Length, 0, nameof(value));
+    ArgumentNullException.ThrowIfNull(profile, nameof(profile));
 
-    void Writer() => _storage[key] = value;
+    var value = JsonSerializer.SerializeToUtf8Bytes(profile);
 
-    WriteLocked(Writer);
+    Write(key, value);
 
     Interlocked.Increment(ref _setCount);
   }
 
-  private void WriteLocked(Action writer)
+  private void Write(string key, byte[] value)
+  {
+    void WriterAction() => _storage[key] = value;
+
+    LockedWrite(WriterAction);
+  }
+
+  private void LockedWrite(Action writer)
   {
     _lock.EnterWriteLock();
 
@@ -41,22 +50,32 @@ public class SimpleStore : IDisposable
     }
   }
 
-  public byte[]? Get(string key)
+  public UserProfile? Get(string key)
   {
     ArgumentException.ThrowIfNullOrEmpty(key, nameof(key));
 
-    var value = (byte[]?)null;
+    var value = Read(key);
+    var profile = (UserProfile?)null;
 
-    void Reader() => value = _storage.GetValueOrDefault(key);
-
-    ReadLocked(Reader);
+    if (value != null) profile = JsonSerializer.Deserialize<UserProfile>(value);
 
     Interlocked.Increment(ref _getCount);
+
+    return profile;
+  }
+
+  private byte[]? Read(string key)
+  {
+    var value = (byte[]?)null;
+
+    void ReaderAction() => value = _storage.GetValueOrDefault(key);
+
+    LockedRead(ReaderAction);
 
     return value;
   }
 
-  private void ReadLocked(Action reader)
+  private void LockedRead(Action reader)
   {
     _lock.EnterReadLock();
 
@@ -70,15 +89,26 @@ public class SimpleStore : IDisposable
     }
   }
 
-  public void Delete(string key)
+  public bool Delete(string key)
   {
     ArgumentException.ThrowIfNullOrEmpty(key, nameof(key));
 
-    void Writer() => _storage.Remove(key);
-
-    WriteLocked(Writer);
+    bool status = TryDelete(key);
 
     Interlocked.Increment(ref _deleteCount);
+
+    return status;
+  }
+
+  private bool TryDelete(string key)
+  {
+    bool status = false;
+
+    void WriterAction() => status = _storage.Remove(key);
+
+    LockedWrite(WriterAction);
+
+    return status;
   }
 
   public (long, long, long) GetStatistics()

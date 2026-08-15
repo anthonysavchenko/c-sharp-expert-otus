@@ -1,4 +1,5 @@
 using System.Text;
+using InMemoryCache.Core;
 using InMemoryCache.Parser;
 using InMemoryCache.Store;
 
@@ -11,7 +12,7 @@ public class SimpleStoreTests
   {
     using var store = new SimpleStore();
     var key = (string?)null;
-    var value = CommandParser.GetBytes("data");
+    var value = new UserProfile();
 
     void Action() => store.Set(key!, value);
 
@@ -23,7 +24,7 @@ public class SimpleStoreTests
   {
     using var store = new SimpleStore();
     var key = string.Empty;
-    var value = CommandParser.GetBytes("data");
+    var value = new UserProfile();
 
     void Action() => store.Set(key, value);
 
@@ -35,23 +36,11 @@ public class SimpleStoreTests
   {
     using var store = new SimpleStore();
     var key = "user:1";
-    var value = (byte[]?)null;
+    var value = (UserProfile?)null;
 
     void Action() => store.Set(key, value!);
 
     Assert.Throws<ArgumentNullException>(Action);
-  }
-
-  [Fact]
-  public void IncorrectSet_EmptyValue()
-  {
-    using var store = new SimpleStore();
-    var key = "user:1";
-    var value = Array.Empty<byte>();
-
-    void Action() => store.Set(key, value);
-
-    Assert.Throws<ArgumentOutOfRangeException>(Action);
   }
 
   [Fact]
@@ -99,21 +88,42 @@ public class SimpleStoreTests
   }
 
   [Fact]
+  public void IncorrectDelete_KeyWasNotFound()
+  {
+    using var store = new SimpleStore();
+    var key = "user:1";
+
+    var status = store.Delete(key);
+
+    Assert.False(status);
+  }
+
+  [Fact]
   public void CorrectSetGetDelete()
   {
     using var store = new SimpleStore();
     var key = "user:1";
-    var value = CommandParser.GetBytes("data");
+
+    var value = new UserProfile()
+    {
+      Id = 1000,
+      Username = "John Smith",
+      CreatedAt = new DateTime(2026, 8, 1),
+    };
 
     store.Set(key, value);
 
     var valueFromStore = store.Get(key);
-
-    store.Delete(key);
-
+    var deleteStatus = store.Delete(key);
     var valueFromStoreAfterDelete = store.Get(key);
 
-    Assert.Equal("data", CommandParser.GetString(valueFromStore));
+    var ddMMyyyyFormat = "dd.MM.yyyy";
+
+    Assert.NotNull(valueFromStore);
+    Assert.Equal(value.Id, valueFromStore.Id);
+    Assert.Equal(value.Username, valueFromStore.Username);
+    Assert.Equal(value.CreatedAt.ToString(ddMMyyyyFormat), valueFromStore.CreatedAt.ToString(ddMMyyyyFormat));
+    Assert.True(deleteStatus);
     Assert.Null(valueFromStoreAfterDelete);
   }
 
@@ -124,11 +134,10 @@ public class SimpleStoreTests
 
     var copyFromKey = "user:1";
     var copyToKey = "user:2";
-    var value = "data";
+    var value = new UserProfile() { Username = "John Smith" };
     var count = 10;
-    var bytes = CommandParser.GetBytes(value);
 
-    store.Set(copyFromKey, bytes);
+    store.Set(copyFromKey, value);
 
     var tasks = ArrangeTasks(store, copyFromKey, copyToKey, count);
 
@@ -136,11 +145,13 @@ public class SimpleStoreTests
 
     var valueFromStoreCopyFrom = store.Get(copyFromKey);
 
-    Assert.Equal(value, CommandParser.GetString(valueFromStoreCopyFrom));
+    Assert.NotNull(valueFromStoreCopyFrom);
+    Assert.Equal(value.Username, valueFromStoreCopyFrom.Username);
 
     var valueFromStoreCopyTo = store.Get(copyToKey);
 
-    Assert.Equal(value, CommandParser.GetString(valueFromStoreCopyTo));
+    Assert.NotNull(valueFromStoreCopyTo);
+    Assert.Equal(value.Username, valueFromStoreCopyTo.Username);
 
     store.Delete(copyFromKey);
     store.Delete(copyToKey);

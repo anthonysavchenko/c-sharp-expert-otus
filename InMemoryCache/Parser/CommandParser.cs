@@ -20,11 +20,10 @@ public static class CommandParser
   {
     var parsedCommandType = SliceFirstToken(bytes);
     var parsedKey = SliceFirstToken(parsedCommandType.Rest);
-    var parsedValue = SliceFirstToken(parsedKey.Rest);
 
     var commandType = parsedCommandType.FirstToken;
     var key = parsedKey.FirstToken;
-    var value = parsedValue.FirstToken;
+    var value = parsedKey.Rest;
 
     if (commandType.IsEmpty || key.IsEmpty) return new Command(commandType: [], key: [], value: []);
 

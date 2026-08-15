@@ -1,13 +1,17 @@
+using System.Buffers;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using System.Text.Json;
+using InMemoryCache.Core;
+using InMemoryCache.Core.Protocol;
 
 namespace InMemoryCache.Client;
 
 // TODO: Попробовать переделать в AsyncDispose и вызывать Connect и Disconnect в конструкторе и Dispose, аналогично переделать и сервер
-// TODO: Передавать в команде Get количество символов и отрезать лишнее при получении
+// TODO: Учесть, что арендованный буффер может быть меньше сообщения и его нужно принимать в цикле
 
-public class TcpClient(int messageMinBytes = 64) : IDisposable
+public class TcpClient(int messageMinBytes = 128) : IDisposable
 {
   private readonly Socket _socket = new(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.IP);
 
@@ -31,10 +35,10 @@ public class TcpClient(int messageMinBytes = 64) : IDisposable
     _socket.Close();
   }
 
-  public async Task<string> SetAsync(string key, string value, CancellationToken cancellationToken = default)
+  public async Task<string> SetAsync(string key, UserProfile profile, CancellationToken cancellationToken = default)
   {
+    var value = JsonSerializer.Serialize(profile);
     var command = $"SET {key} {value}";
-
     var response = await SendAsync(command, cancellationToken);
 
     return response;
@@ -44,30 +48,38 @@ public class TcpClient(int messageMinBytes = 64) : IDisposable
   {
     var commandBytes = Encoding.UTF8.GetBytes(command);
 
-    await _socket.SendAsync(commandBytes, SocketFlags.None, cancellationToken);
+    await FrameProtocol.SendMessageAsync(_socket, commandBytes, cancellationToken);
 
-    var responseBytes = new byte[_messageMinBytes];
+    var buffer = ArrayPool<byte>.Shared.Rent(_messageMinBytes);
 
-    await _socket.ReceiveAsync(responseBytes, SocketFlags.None, cancellationToken);
+    try
+    {
+      var bytesReceived = await FrameProtocol.ReceiveMessageAsync(_socket, buffer, _messageMinBytes, cancellationToken);
+      var response = Encoding.UTF8.GetString(buffer.AsSpan(0, bytesReceived));
 
-    var response = Encoding.UTF8.GetString(responseBytes);
-
-    return response;
+      return response;
+    }
+    finally
+    {
+      ArrayPool<byte>.Shared.Return(buffer);
+    }
   }
 
-  public async Task<string> GetAsync(string key, CancellationToken cancellationToken = default)
+  public async Task<UserProfile?> GetAsync(string key, CancellationToken cancellationToken = default)
   {
     var command = $"GET {key}";
-
     var response = await SendAsync(command, cancellationToken);
 
-    return response;
+    if (response.StartsWith("NULL")) return null;
+
+    var profile = JsonSerializer.Deserialize<UserProfile>(response);
+
+    return profile;
   }
 
   public async Task<string> DeleteAsync(string key, CancellationToken cancellationToken = default)
   {
     var command = $"DEL {key}";
-
     var response = await SendAsync(command, cancellationToken);
 
     return response;

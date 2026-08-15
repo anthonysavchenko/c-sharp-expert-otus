@@ -1,4 +1,5 @@
 using InMemoryCache.Client;
+using InMemoryCache.Core;
 using InMemoryCache.Log;
 using InMemoryCache.Server;
 using InMemoryCache.Store;
@@ -13,35 +14,42 @@ public class TcpServerTests
   {
     static async Task SendFromClientAsync(string ip, int port, CancellationToken cancellationToken)
     {
-      await SendSetAsync(ip, port, "user:1", "data", cancellationToken);
+      var profile = new UserProfile()
+      {
+        Id = 1000,
+        Username = "John Smith",
+        CreatedAt = new DateTime(2026, 8, 1),
+      };
+
+      await SendSetAsync(ip, port, "user:1", profile, cancellationToken);
       await SendGetAsync(ip, port, "user:1", cancellationToken);
       await SendDeleteAsync(ip, port, "user:1", cancellationToken);
     }
 
     var lines = await SendFromClentToServerAndGetConsoleOutputAsLinesAsync(SendFromClientAsync);
 
-    Assert.Contains("Server [127.0.0.1:8080]. Started.", lines[0]);
-    Assert.Contains("Server [127.0.0.1:8080]. Client message min bytes for ArrayPool: 64.", lines[1]);
+    Assert.Contains("Server [127.0.0.1:8180]. Started.", lines[0]);
+    Assert.Contains("Server [127.0.0.1:8180]. Client message min bytes for ArrayPool: 128.", lines[1]);
 
-    Assert.Contains("Server [127.0.0.1:8080]. Client connected [127.0.0.1", lines[2]);
+    Assert.Contains("Server [127.0.0.1:8180]. Client connected [127.0.0.1", lines[2]);
 
     Assert.Contains("Client [127.0.0.1", lines[3]);
-    Assert.Contains("Command received [Command Type: SET, Key: user:1, Value: data].", lines[3]);
+    Assert.Contains("Command received [Command Type: SET, Key: user:1, Value: {\"Id\":1000,\"Username\":\"John Smith\",\"CreatedAt\":\"2026-08-01T00:00:00\"}].", lines[3]);
     Assert.Contains("Response sent [OK].", lines[3]);
 
     Assert.Contains("Client [127.0.0.1", lines[4]);
     Assert.Contains("Disconnected.", lines[4]);
 
-    Assert.Contains("Server [127.0.0.1:8080]. Client connected [127.0.0.1", lines[5]);
+    Assert.Contains("Server [127.0.0.1:8180]. Client connected [127.0.0.1", lines[5]);
 
     Assert.Contains("Client [127.0.0.1", lines[6]);
     Assert.Contains("Command received [Command Type: GET, Key: user:1].", lines[6]);
-    Assert.Contains("Response sent [data].", lines[6]);
+    Assert.Contains("Response sent [{\"Id\":1000,\"Username\":\"John Smith\",\"CreatedAt\":\"2026-08-01T00:00:00\"}].", lines[6]);
 
     Assert.Contains("Client [127.0.0.1", lines[7]);
     Assert.Contains("Disconnected.", lines[7]);
 
-    Assert.Contains("Server [127.0.0.1:8080]. Client connected [127.0.0.1", lines[8]);
+    Assert.Contains("Server [127.0.0.1:8180]. Client connected [127.0.0.1", lines[8]);
 
     Assert.Contains("Client [127.0.0.1", lines[9]);
     Assert.Contains("Command received [Command Type: DEL, Key: user:1].", lines[9]);
@@ -50,7 +58,7 @@ public class TcpServerTests
     Assert.Contains("Client [127.0.0.1", lines[10]);
     Assert.Contains("Disconnected.", lines[10]);
 
-    Assert.Contains("Server [127.0.0.1:8080]. Closed.", lines[11]);
+    Assert.Contains("Server [127.0.0.1:8180]. Closed.", lines[11]);
   }
 
   [Fact]
@@ -58,15 +66,15 @@ public class TcpServerTests
   {
     static async Task SendFromClientAsync(string ip, int port, CancellationToken cancellationToken)
     {
-      await SendSetAsync(ip, port, "", "", cancellationToken);
+      await SendSetAsync(ip, port, "", new UserProfile(), cancellationToken);
     }
 
     var lines = await SendFromClentToServerAndGetConsoleOutputAsLinesAsync(SendFromClientAsync);
 
-    Assert.Contains("Server [127.0.0.1:8080]. Started.", lines[0]);
-    Assert.Contains("Server [127.0.0.1:8080]. Client message min bytes for ArrayPool: 64.", lines[1]);
+    Assert.Contains("Server [127.0.0.1:8180]. Started.", lines[0]);
+    Assert.Contains("Server [127.0.0.1:8180]. Client message min bytes for ArrayPool: 128.", lines[1]);
 
-    Assert.Contains("Server [127.0.0.1:8080]. Client connected [127.0.0.1", lines[2]);
+    Assert.Contains("Server [127.0.0.1:8180]. Client connected [127.0.0.1", lines[2]);
 
     Assert.Contains("Client [127.0.0.1", lines[3]);
     Assert.Contains("Command received [Command Type: , Key: ].", lines[3]);
@@ -75,7 +83,7 @@ public class TcpServerTests
     Assert.Contains("Client [127.0.0.1", lines[4]);
     Assert.Contains("Disconnected.", lines[4]);
 
-    Assert.Contains("Server [127.0.0.1:8080]. Closed.", lines[5]);
+    Assert.Contains("Server [127.0.0.1:8180]. Closed.", lines[5]);
   }
 
   private static async Task<string[]> SendFromClentToServerAndGetConsoleOutputAsLinesAsync(
@@ -106,8 +114,8 @@ public class TcpServerTests
   {
     var ip = "127.0.0.1";
     var ipAddress = IPAddress.Parse(ip);
-    var port = 8080;
-    var clientMessageMinBytes = 64;
+    var port = 8180;
+    var clientMessageMinBytes = 128;
     var logger = new ConsoleLogger();
 
     using var store = new SimpleStore();
@@ -129,13 +137,13 @@ public class TcpServerTests
     await serverListeningTask;
   }
 
-  private static async Task SendSetAsync(string ip, int port, string key, string value, CancellationToken cancellationToken)
+  private static async Task SendSetAsync(string ip, int port, string key, UserProfile profile, CancellationToken cancellationToken)
   {
     using var client = new TcpClient();
 
     await client.ConnectAsync(ip, port, cancellationToken);
 
-    var response = await client.SetAsync(key, value, cancellationToken);
+    var response = await client.SetAsync(key, profile, cancellationToken);
 
     await client.DisconnectAsync(cancellationToken);
   }

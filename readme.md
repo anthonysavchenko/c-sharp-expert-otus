@@ -10,4 +10,6 @@
 
 ## 4. ✅ [Интеграция и первая рабочая версия: "Все вместе"](task-description/4-integration.md)
 
-## 5. ⏳ [Нагрузочное тестирование](task-description/5-load-testing.md)
+## 5. ✅ [Нагрузочное тестирование](task-description/5-load-testing.md)
+
+## 6. ⏳ [Работа со сложными объектами и стандартная сериализация](task-description/6-serialization.md)
