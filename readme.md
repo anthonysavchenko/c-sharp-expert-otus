@@ -13,3 +13,5 @@
 ## 5. ✅ [Нагрузочное тестирование](task-description/5-load-testing.md)
 
 ## 6. ⏳ [Работа со сложными объектами и стандартная сериализация](task-description/6-serialization.md)
+
+## 7. ⏳ [Продвинутая сериализация с генераторами кода](task-description/7-source-generator.md)
