@@ -8,7 +8,11 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\InMemoryCache.Generators\InMemoryCache.Generators.csproj" OutputItemType="Analyzer"/>
+    <PackageReference Include="BenchmarkDotNet" Version="0.15.8" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\InMemoryCache\InMemoryCache.csproj" />
   </ItemGroup>
 
 </Project>

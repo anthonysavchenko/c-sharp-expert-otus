@@ -22,7 +22,11 @@ public class SimpleStore : IStore
     ArgumentException.ThrowIfNullOrEmpty(key, nameof(key));
     ArgumentNullException.ThrowIfNull(profile, nameof(profile));
 
-    var value = JsonSerializer.SerializeToUtf8Bytes(profile);
+    using var memoryStream = new MemoryStream();
+
+    profile.SerializeToBinary(memoryStream);
+
+    var value = memoryStream.ToArray();
 
     Write(key, value);
 
@@ -57,7 +61,13 @@ public class SimpleStore : IStore
     var value = Read(key);
     var profile = (UserProfile?)null;
 
-    if (value != null) profile = JsonSerializer.Deserialize<UserProfile>(value);
+    if (value != null)
+    {
+      using var memoryStream = new MemoryStream(value);
+
+      profile = new UserProfile();
+      profile.DeserializeFromBinary(memoryStream);
+    }
 
     Interlocked.Increment(ref _getCount);
 

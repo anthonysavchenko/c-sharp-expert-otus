@@ -1,4 +1,6 @@
 <Solution>
+  <Project Path="InMemoryCache.Benchmarks/InMemoryCache.Benchmarks.csproj" />
+  <Project Path="InMemoryCache.Generators/InMemoryCache.Generators.csproj" />
   <Project Path="InMemoryCache.LoadTests/InMemoryCache.LoadTests.csproj" />
   <Project Path="InMemoryCache.Tests/InMemoryCache.Tests.csproj" />
   <Project Path="InMemoryCache/InMemoryCache.csproj" />

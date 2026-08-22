@@ -81,10 +81,10 @@ public class TcpServerTests
 
     var lines = await SendFromClentToServerAndGetConsoleOutputAsLinesAsync(SendFromClientAsync);
 
-    Assert.Contains("Server [127.0.0.1:8080]. Started.", lines[0]);
-    Assert.Contains("Server [127.0.0.1:8080]. Client message min bytes for ArrayPool: 128.", lines[1]);
+    Assert.Contains("Server [127.0.0.1:8180]. Started.", lines[0]);
+    Assert.Contains("Server [127.0.0.1:8180]. Client message min bytes for ArrayPool: 128.", lines[1]);
 
-    Assert.Contains("Server [127.0.0.1:8080]. Client connected [127.0.0.1", lines[2]);
+    Assert.Contains("Server [127.0.0.1:8180]. Client connected [127.0.0.1", lines[2]);
 
     Assert.Contains("Client [127.0.0.1", lines[3]);
     Assert.Contains("Command received [Command Type: SET, Key: user:1, Value: {\"Id\":1000,\"Username\":\"John Smith\",\"CreatedAt\":\"2026-08-01T00:00:00\"}].", lines[3]);
@@ -101,7 +101,7 @@ public class TcpServerTests
     Assert.Contains("Client [127.0.0.1", lines[6]);
     Assert.Contains("Disconnected.", lines[6]);
 
-    Assert.Contains("Server [127.0.0.1:8080]. Closed.", lines[7]);
+    Assert.Contains("Server [127.0.0.1:8180]. Closed.", lines[7]);
   }
 
   [Fact]

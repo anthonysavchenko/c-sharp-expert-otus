@@ -1,5 +1,6 @@
 obj
 bin
-InMemoryCache.LoadTests/reports
 .vs/*/
 .vs/slnx.sqlite
+InMemoryCache.LoadTests/reports
+InMemoryCache.Benchmarks/BenchmarkDotNet.Artifacts
