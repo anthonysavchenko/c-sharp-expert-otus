@@ -4,8 +4,8 @@ using InMemoryCache.Server;
 using InMemoryCache.Store;
 using InMemoryCache.Telemetry;
 
-// TelemetryWrapper.TracerProvider = TelemetryWrapper.BuildConsoleTracerProvider();
-// TelemetryWrapper.MeterProvider = TelemetryWrapper.BuildConsoleMeterProvider();
+TelemetryWrapper.TracerProvider = TelemetryWrapper.BuildConsoleTracerProvider();
+TelemetryWrapper.MeterProvider = TelemetryWrapper.BuildConsoleMeterProvider();
 
 var ipAddress = IPAddress.Parse("127.0.0.1");
 var port = 8180;
