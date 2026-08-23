@@ -1,10 +1,12 @@
 using System.Buffers;
+using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
 using System.Text.Json;
 using InMemoryCache.Core;
 using InMemoryCache.Core.Protocol;
 using InMemoryCache.Parser;
+using InMemoryCache.Telemetry;
 
 namespace InMemoryCache.Server;
 
@@ -85,7 +87,7 @@ public class TcpServer(IPAddress ipAddress, int port, int messageMinBytes, IStor
   private async Task ProcessClientAsync(Socket clientSocket, CancellationToken cancellationToken = default)
   {
     using (clientSocket)
-    {
+
       try
       {
         while (!cancellationToken.IsCancellationRequested)
@@ -107,7 +109,6 @@ public class TcpServer(IPAddress ipAddress, int port, int messageMinBytes, IStor
         clientSocket.Close();
         _logger.WriteClientLog(clientEndPoint?.ToString(), "Disconnected");
       }
-    }
   }
 
   private async Task<int> WaitAndProcessClientMessageAsync(Socket clientSocket, CancellationToken cancellationToken = default)
@@ -135,10 +136,23 @@ public class TcpServer(IPAddress ipAddress, int port, int messageMinBytes, IStor
 
   private byte[] ProcessClientMessage(ReadOnlyMemory<byte> message, EndPoint? clientEndPoint)
   {
+    using var activity = TelemetryWrapper.ActivitySource.StartActivity(nameof(ApplyCommandToStore));
+
+    var timer = Stopwatch.StartNew();
+
     var command = CommandParser.ParseBytes(message.Span);
+
+    activity?
+      .SetTag(nameof(command.CommandType), command.CommandType)
+      .SetTag(nameof(command.Key), command.Key)
+      .SetTag(nameof(command.Value), command.Value);
+
     var response = ApplyCommandToStore(command);
 
     _logger.WriteClientLog(clientEndPoint, command, response);
+
+    TelemetryWrapper.CommandCounter.Add(1);
+    TelemetryWrapper.CommandHistogram.Record(timer.ElapsedMilliseconds);
 
     return response;
   }
