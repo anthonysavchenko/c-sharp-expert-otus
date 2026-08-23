@@ -19,7 +19,7 @@ namespace InMemoryCache.Server;
 // TODO: Сообщать клиенту при попытке удаления несуществующего элемента
 // TODO: Переделать из статического класса FrameProtocol в отдельный класс clientSocket вместе с буфером из ArrayPool и перенести туда методы чтения/записи сообщений, а bytesReceived превратить в поле _disconnected
 
-public class TcpServer(IPAddress ipAddress, int port, int messageMaxLengthBytes, IStore store, ILogger logger) : ILogWritable, IDisposable
+public class TcpServer(IPAddress ipAddress, int port, int messageMaxLengthBytes, int maxConcurrentClients, IStore store, ILogger logger) : ILogWritable, IDisposable
 {
   private static readonly byte[] OkResponse = CommandParser.GetBytes($"OK{Environment.NewLine}");
 
@@ -36,6 +36,8 @@ public class TcpServer(IPAddress ipAddress, int port, int messageMaxLengthBytes,
   private readonly IPEndPoint _endPoint = new(ipAddress, port);
 
   private readonly int _messageMaxLengthBytes = messageMaxLengthBytes;
+
+  private readonly SemaphoreSlim _concurrentClientsSemaphore = new(maxConcurrentClients);
 
   private readonly ILogger _logger = logger;
 
@@ -72,6 +74,8 @@ public class TcpServer(IPAddress ipAddress, int port, int messageMaxLengthBytes,
 
         _logger.WriteServerLog(this, $"Client connected [{clientSocket.RemoteEndPoint}]");
 
+        await _concurrentClientsSemaphore.WaitAsync(cancellationToken);
+
         _ = Task.Run(() => ProcessClientAsync(clientSocket, cancellationToken), cancellationToken);
       }
     }
@@ -86,7 +90,7 @@ public class TcpServer(IPAddress ipAddress, int port, int messageMaxLengthBytes,
   private async Task ProcessClientAsync(Socket clientSocket, CancellationToken cancellationToken = default)
   {
     using (clientSocket)
-
+    {
       try
       {
         while (!cancellationToken.IsCancellationRequested)
@@ -102,12 +106,15 @@ public class TcpServer(IPAddress ipAddress, int port, int messageMaxLengthBytes,
       }
       finally
       {
+        _concurrentClientsSemaphore.Release();
+
         var clientEndPoint = clientSocket.RemoteEndPoint;
 
         if (clientSocket.Connected) clientSocket.Shutdown(SocketShutdown.Both);
         clientSocket.Close();
         _logger.WriteClientLog(clientEndPoint?.ToString(), "Disconnected");
       }
+    }
   }
 
   private async Task<int> WaitAndProcessClientMessageAsync(Socket clientSocket, CancellationToken cancellationToken = default)
