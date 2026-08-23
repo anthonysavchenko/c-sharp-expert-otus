@@ -57,7 +57,7 @@ public class TcpServerTests
     Assert.Contains("Client [127.0.0.1", lines[9]);
     Assert.Contains("Disconnected.", lines[9]);
 
-    Assert.Contains("Server [127.0.0.1:8180]. Closed.", lines[9]);
+    Assert.Contains("Server [127.0.0.1:8180]. Closed.", lines[10]);
   }
 
   [Fact]
