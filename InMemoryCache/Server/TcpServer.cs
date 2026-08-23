@@ -19,7 +19,7 @@ namespace InMemoryCache.Server;
 // TODO: Сообщать клиенту при попытке удаления несуществующего элемента
 // TODO: Переделать из статического класса FrameProtocol в отдельный класс clientSocket вместе с буфером из ArrayPool и перенести туда методы чтения/записи сообщений, а bytesReceived превратить в поле _disconnected
 
-public class TcpServer(IPAddress ipAddress, int port, int messageMinBytes, IStore store, ILogger logger) : ILogWritable, IDisposable
+public class TcpServer(IPAddress ipAddress, int port, int messageMaxLengthBytes, IStore store, ILogger logger) : ILogWritable, IDisposable
 {
   private static readonly byte[] OkResponse = CommandParser.GetBytes($"OK{Environment.NewLine}");
 
@@ -35,7 +35,7 @@ public class TcpServer(IPAddress ipAddress, int port, int messageMinBytes, IStor
 
   private readonly IPEndPoint _endPoint = new(ipAddress, port);
 
-  private readonly int _messageMinBytes = messageMinBytes;
+  private readonly int _messageMaxLengthBytes = messageMaxLengthBytes;
 
   private readonly ILogger _logger = logger;
 
@@ -53,7 +53,6 @@ public class TcpServer(IPAddress ipAddress, int port, int messageMinBytes, IStor
       serverSocket.Listen();
 
       _logger.WriteServerLog(this, "Started");
-      _logger.WriteServerLog(this, $"Client message min bytes for ArrayPool: {_messageMinBytes}");
 
       await WaitAndProcessClientsAsync(serverSocket, cancellationToken);
     }
@@ -113,11 +112,11 @@ public class TcpServer(IPAddress ipAddress, int port, int messageMinBytes, IStor
 
   private async Task<int> WaitAndProcessClientMessageAsync(Socket clientSocket, CancellationToken cancellationToken = default)
   {
-    var message = ArrayPool<byte>.Shared.Rent(_messageMinBytes);
+    var message = ArrayPool<byte>.Shared.Rent(_messageMaxLengthBytes);
 
     try
     {
-      var bytesReceived = await FrameProtocol.ReceiveMessageAsync(clientSocket, message, _messageMinBytes, cancellationToken);
+      var bytesReceived = await FrameProtocol.ReceiveMessageAsync(clientSocket, message, _messageMaxLengthBytes, cancellationToken);
 
       if (bytesReceived != 0)
       {

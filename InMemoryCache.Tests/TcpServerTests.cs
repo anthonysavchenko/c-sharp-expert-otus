@@ -29,36 +29,35 @@ public class TcpServerTests
     var lines = await SendFromClentToServerAndGetConsoleOutputAsLinesAsync(SendFromClientAsync);
 
     Assert.Contains("Server [127.0.0.1:8180]. Started.", lines[0]);
-    Assert.Contains("Server [127.0.0.1:8180]. Client message min bytes for ArrayPool: 128.", lines[1]);
 
-    Assert.Contains("Server [127.0.0.1:8180]. Client connected [127.0.0.1", lines[2]);
+    Assert.Contains("Server [127.0.0.1:8180]. Client connected [127.0.0.1", lines[1]);
+
+    Assert.Contains("Client [127.0.0.1", lines[2]);
+    Assert.Contains("Command received [Command Type: SET, Key: user:1, Value: {\"Id\":1000,\"Username\":\"John Smith\",\"CreatedAt\":\"2026-08-01T00:00:00\"}].", lines[2]);
+    Assert.Contains("Response sent [OK].", lines[2]);
 
     Assert.Contains("Client [127.0.0.1", lines[3]);
-    Assert.Contains("Command received [Command Type: SET, Key: user:1, Value: {\"Id\":1000,\"Username\":\"John Smith\",\"CreatedAt\":\"2026-08-01T00:00:00\"}].", lines[3]);
-    Assert.Contains("Response sent [OK].", lines[3]);
+    Assert.Contains("Disconnected.", lines[3]);
 
-    Assert.Contains("Client [127.0.0.1", lines[4]);
-    Assert.Contains("Disconnected.", lines[4]);
+    Assert.Contains("Server [127.0.0.1:8180]. Client connected [127.0.0.1", lines[4]);
 
-    Assert.Contains("Server [127.0.0.1:8180]. Client connected [127.0.0.1", lines[5]);
+    Assert.Contains("Client [127.0.0.1", lines[5]);
+    Assert.Contains("Command received [Command Type: GET, Key: user:1].", lines[5]);
+    Assert.Contains("Response sent [{\"Id\":1000,\"Username\":\"John Smith\",\"CreatedAt\":\"2026-08-01T00:00:00\"}].", lines[5]);
 
     Assert.Contains("Client [127.0.0.1", lines[6]);
-    Assert.Contains("Command received [Command Type: GET, Key: user:1].", lines[6]);
-    Assert.Contains("Response sent [{\"Id\":1000,\"Username\":\"John Smith\",\"CreatedAt\":\"2026-08-01T00:00:00\"}].", lines[6]);
+    Assert.Contains("Disconnected.", lines[6]);
 
-    Assert.Contains("Client [127.0.0.1", lines[7]);
-    Assert.Contains("Disconnected.", lines[7]);
+    Assert.Contains("Server [127.0.0.1:8180]. Client connected [127.0.0.1", lines[7]);
 
-    Assert.Contains("Server [127.0.0.1:8180]. Client connected [127.0.0.1", lines[8]);
+    Assert.Contains("Client [127.0.0.1", lines[8]);
+    Assert.Contains("Command received [Command Type: DEL, Key: user:1].", lines[8]);
+    Assert.Contains("Response sent [OK].", lines[8]);
 
     Assert.Contains("Client [127.0.0.1", lines[9]);
-    Assert.Contains("Command received [Command Type: DEL, Key: user:1].", lines[9]);
-    Assert.Contains("Response sent [OK].", lines[9]);
+    Assert.Contains("Disconnected.", lines[9]);
 
-    Assert.Contains("Client [127.0.0.1", lines[10]);
-    Assert.Contains("Disconnected.", lines[10]);
-
-    Assert.Contains("Server [127.0.0.1:8180]. Closed.", lines[11]);
+    Assert.Contains("Server [127.0.0.1:8180]. Closed.", lines[9]);
   }
 
   [Fact]
@@ -82,26 +81,25 @@ public class TcpServerTests
     var lines = await SendFromClentToServerAndGetConsoleOutputAsLinesAsync(SendFromClientAsync);
 
     Assert.Contains("Server [127.0.0.1:8180]. Started.", lines[0]);
-    Assert.Contains("Server [127.0.0.1:8180]. Client message min bytes for ArrayPool: 128.", lines[1]);
 
-    Assert.Contains("Server [127.0.0.1:8180]. Client connected [127.0.0.1", lines[2]);
+    Assert.Contains("Server [127.0.0.1:8180]. Client connected [127.0.0.1", lines[1]);
+
+    Assert.Contains("Client [127.0.0.1", lines[2]);
+    Assert.Contains("Command received [Command Type: SET, Key: user:1, Value: {\"Id\":1000,\"Username\":\"John Smith\",\"CreatedAt\":\"2026-08-01T00:00:00\"}].", lines[2]);
+    Assert.Contains("Response sent [OK].", lines[2]);
 
     Assert.Contains("Client [127.0.0.1", lines[3]);
-    Assert.Contains("Command received [Command Type: SET, Key: user:1, Value: {\"Id\":1000,\"Username\":\"John Smith\",\"CreatedAt\":\"2026-08-01T00:00:00\"}].", lines[3]);
-    Assert.Contains("Response sent [OK].", lines[3]);
+    Assert.Contains("Command received [Command Type: GET, Key: user:1].", lines[3]);
+    Assert.Contains("Response sent [{\"Id\":1000,\"Username\":\"John Smith\",\"CreatedAt\":\"2026-08-01T00:00:00\"}].", lines[3]);
 
     Assert.Contains("Client [127.0.0.1", lines[4]);
-    Assert.Contains("Command received [Command Type: GET, Key: user:1].", lines[4]);
-    Assert.Contains("Response sent [{\"Id\":1000,\"Username\":\"John Smith\",\"CreatedAt\":\"2026-08-01T00:00:00\"}].", lines[4]);
+    Assert.Contains("Command received [Command Type: DEL, Key: user:1].", lines[4]);
+    Assert.Contains("Response sent [OK].", lines[4]);
 
     Assert.Contains("Client [127.0.0.1", lines[5]);
-    Assert.Contains("Command received [Command Type: DEL, Key: user:1].", lines[5]);
-    Assert.Contains("Response sent [OK].", lines[5]);
+    Assert.Contains("Disconnected.", lines[5]);
 
-    Assert.Contains("Client [127.0.0.1", lines[6]);
-    Assert.Contains("Disconnected.", lines[6]);
-
-    Assert.Contains("Server [127.0.0.1:8180]. Closed.", lines[7]);
+    Assert.Contains("Server [127.0.0.1:8180]. Closed.", lines[6]);
   }
 
   [Fact]
@@ -115,18 +113,17 @@ public class TcpServerTests
     var lines = await SendFromClentToServerAndGetConsoleOutputAsLinesAsync(SendFromClientAsync);
 
     Assert.Contains("Server [127.0.0.1:8180]. Started.", lines[0]);
-    Assert.Contains("Server [127.0.0.1:8180]. Client message min bytes for ArrayPool: 128.", lines[1]);
 
-    Assert.Contains("Server [127.0.0.1:8180]. Client connected [127.0.0.1", lines[2]);
+    Assert.Contains("Server [127.0.0.1:8180]. Client connected [127.0.0.1", lines[1]);
+
+    Assert.Contains("Client [127.0.0.1", lines[2]);
+    Assert.Contains("Command received [Command Type: , Key: ].", lines[2]);
+    Assert.Contains("Response sent [ERROR Unknown command].", lines[2]);
 
     Assert.Contains("Client [127.0.0.1", lines[3]);
-    Assert.Contains("Command received [Command Type: , Key: ].", lines[3]);
-    Assert.Contains("Response sent [ERROR Unknown command].", lines[3]);
+    Assert.Contains("Disconnected.", lines[3]);
 
-    Assert.Contains("Client [127.0.0.1", lines[4]);
-    Assert.Contains("Disconnected.", lines[4]);
-
-    Assert.Contains("Server [127.0.0.1:8180]. Closed.", lines[5]);
+    Assert.Contains("Server [127.0.0.1:8180]. Closed.", lines[4]);
   }
 
   private static async Task<string[]> SendFromClentToServerAndGetConsoleOutputAsLinesAsync(
