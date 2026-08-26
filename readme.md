@@ -16,7 +16,7 @@
 
 ### 7. ✅ [Продвинутая сериализация с генераторами кода](task-description/7-source-generator.md)
 
-### 8. ⏳ [Безопасность и наблюдаемость](task-description/8-open-telemetry.md)
+### 8. ✅ [Безопасность и наблюдаемость](task-description/8-open-telemetry.md)
 
 ### 9. ⏳ [Продвинутая отладка: анализ сбоев](task-description/9-debug.md)
 
