@@ -1,10 +1,12 @@
 using System.Buffers;
+using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
 using System.Text.Json;
 using InMemoryCache.Core;
 using InMemoryCache.Core.Protocol;
 using InMemoryCache.Parser;
+using InMemoryCache.Telemetry;
 
 namespace InMemoryCache.Server;
 
@@ -17,7 +19,7 @@ namespace InMemoryCache.Server;
 // TODO: Сообщать клиенту при попытке удаления несуществующего элемента
 // TODO: Переделать из статического класса FrameProtocol в отдельный класс clientSocket вместе с буфером из ArrayPool и перенести туда методы чтения/записи сообщений, а bytesReceived превратить в поле _disconnected
 
-public class TcpServer(IPAddress ipAddress, int port, int messageMinBytes, IStore store, ILogger logger) : ILogWritable, IDisposable
+public class TcpServer(IPAddress ipAddress, int port, int messageMaxLengthBytes, int maxConcurrentClients, IStore store, ILogger logger) : ILogWritable, IDisposable
 {
   private static readonly byte[] OkResponse = CommandParser.GetBytes($"OK{Environment.NewLine}");
 
@@ -33,7 +35,9 @@ public class TcpServer(IPAddress ipAddress, int port, int messageMinBytes, IStor
 
   private readonly IPEndPoint _endPoint = new(ipAddress, port);
 
-  private readonly int _messageMinBytes = messageMinBytes;
+  private readonly int _messageMaxLengthBytes = messageMaxLengthBytes;
+
+  private readonly SemaphoreSlim _concurrentClientsSemaphore = new(maxConcurrentClients);
 
   private readonly ILogger _logger = logger;
 
@@ -51,7 +55,6 @@ public class TcpServer(IPAddress ipAddress, int port, int messageMinBytes, IStor
       serverSocket.Listen();
 
       _logger.WriteServerLog(this, "Started");
-      _logger.WriteServerLog(this, $"Client message min bytes for ArrayPool: {_messageMinBytes}");
 
       await WaitAndProcessClientsAsync(serverSocket, cancellationToken);
     }
@@ -70,6 +73,8 @@ public class TcpServer(IPAddress ipAddress, int port, int messageMinBytes, IStor
         var clientSocket = await serverSocket.AcceptAsync(cancellationToken);
 
         _logger.WriteServerLog(this, $"Client connected [{clientSocket.RemoteEndPoint}]");
+
+        await _concurrentClientsSemaphore.WaitAsync(cancellationToken);
 
         _ = Task.Run(() => ProcessClientAsync(clientSocket, cancellationToken), cancellationToken);
       }
@@ -101,6 +106,8 @@ public class TcpServer(IPAddress ipAddress, int port, int messageMinBytes, IStor
       }
       finally
       {
+        _concurrentClientsSemaphore.Release();
+
         var clientEndPoint = clientSocket.RemoteEndPoint;
 
         if (clientSocket.Connected) clientSocket.Shutdown(SocketShutdown.Both);
@@ -112,11 +119,11 @@ public class TcpServer(IPAddress ipAddress, int port, int messageMinBytes, IStor
 
   private async Task<int> WaitAndProcessClientMessageAsync(Socket clientSocket, CancellationToken cancellationToken = default)
   {
-    var message = ArrayPool<byte>.Shared.Rent(_messageMinBytes);
+    var message = ArrayPool<byte>.Shared.Rent(_messageMaxLengthBytes);
 
     try
     {
-      var bytesReceived = await FrameProtocol.ReceiveMessageAsync(clientSocket, message, _messageMinBytes, cancellationToken);
+      var bytesReceived = await FrameProtocol.ReceiveMessageAsync(clientSocket, message, _messageMaxLengthBytes, cancellationToken);
 
       if (bytesReceived != 0)
       {
@@ -135,10 +142,23 @@ public class TcpServer(IPAddress ipAddress, int port, int messageMinBytes, IStor
 
   private byte[] ProcessClientMessage(ReadOnlyMemory<byte> message, EndPoint? clientEndPoint)
   {
+    using var activity = TelemetryWrapper.ActivitySource.StartActivity(nameof(ApplyCommandToStore));
+
+    var timer = Stopwatch.StartNew();
+
     var command = CommandParser.ParseBytes(message.Span);
+
+    activity?
+      .SetTag(nameof(command.CommandType), command.CommandType)
+      .SetTag(nameof(command.Key), command.Key)
+      .SetTag(nameof(command.Value), command.Value);
+
     var response = ApplyCommandToStore(command);
 
     _logger.WriteClientLog(clientEndPoint, command, response);
+
+    TelemetryWrapper.CommandCounter.Add(1);
+    TelemetryWrapper.CommandHistogram.Record(timer.ElapsedMilliseconds);
 
     return response;
   }
